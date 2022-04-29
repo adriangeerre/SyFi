@@ -119,6 +119,115 @@ if [[ ! -d ${INPUT_FOLDER} ]]; then
   exit
 fi
 
+
+### Functions
+
+## Variant Calling
+function variantCalling() {
+  # Intro messages
+  printf "\n"
+  echo "Performing Variant Calling"
+
+  # Kmer plots (avoid for the moment)
+
+  # Mark duplicates (Mapping is already done)
+  printf "\n"
+  echo "Mark BAM duplicates"
+  markDuplicates ${bam_file} ${output_dir} ${threads}
+
+  # Haplotype caller
+  printf "\n"
+  echo "Haplotype calling"
+  haplotypeCaller ${reference_fasta} ${reference_dict} ${output_dir} ${input_bam}
+
+  # Joint genotyping
+  printf "\n"
+  echo "Join genotyping"
+  jointGenotype 
+
+}
+
+# FUNCTION: Mark Duplicates
+function markDuplicates() {
+  # Arguments
+  bam_file=$1
+  output_dir=$2
+  threads=$3
+
+  # Variables
+  sample=$(basename ${bam_file} | sed 's/.bam//g')
+  output_fn="${output_dir}/mapped_filtered/${sample}_stats.txt)"
+
+  # Execution
+  gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/${sample}.filtered.bam -M ${output_dir}/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}
+
+  # Index BAM
+  # samtools index -@ ${threads} -b ${filtered_bam} 
+
+  # Plot BAM
+  samtools stats -@ ${threads} -d ${bam_file} > ${output_fn}
+  plot-bamstats -p ${output_dir}/mapped_filtered/ ${output_fn}
+
+}
+
+# FUNCTION: Haplotype Caller
+function haplotypeCaller() {
+  # Arguments
+  reference_fasta=$1
+  reference_dict=$2
+  output_dir=$3
+  input_bam=$4
+
+  # Variables (-t genomic -m joint -a False -i False)
+  sample=$(basename ${input_bam} | cut -d "." -f 1)
+  erc_mode="GVCF"
+  min_thr=30
+  output_mode="EMIT_VARIANTS_ONLY"
+  ploidy=2
+  
+  # Create dictionary
+  gatk CreateSequenceDictionary -R {reference_fasta} -O {reference_dict}
+
+  # Add read group to BAM
+  gatk AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
+  samtools index -b ${output_dir}/${sample}.filtered.readgroup.bam ${output_dir}/${sample}.filtered.readgroup.bai -@ ${threads}
+
+  # Execution
+  gatk --java-options "-Xmx${mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
+}
+
+# FUNCTION: Joint Genotyping
+function jointGenotype() {
+  # Arguments
+  reference_fasta=$1
+  output_dir=$2
+  threads=$3
+
+  # Variables
+  input_gvcf="${output_dir}/genotyped/{sample}.g.vcf.gz"
+  intervals_fn="${output_dir}/reference/intervals.list"
+  workspace_dir="${output_dir}/variants/db_workspace"
+  merge_intervals="--merge-input-intervals"
+  database=""
+  output_vcf="${output_dir}/variants/${projectname}.vcf.gz"
+  comp_fn=""
+  plot_dir=""
+
+
+  # Execution
+  tabix -p vcf {input_gvcf}
+
+  gatk --java-options "-Xmx32g -Xms8g -Djava.io.tmpdir={output_dir}/variants/" GenomicsDBImport -V ${input_gvcf} -L {intervals_fn} --tmp-dir {output_dir}/variants/ --genomicsdb-workspace-path {workspace_dir} --batch-size 70 --seconds-between-progress-updates 120 --reader-threads {threads} {merge_intervals} # Run genotype (Create database)
+
+  gatk --java-options "-Xmx32g -Djava.io.tmpdir={output_dir}/variants/" GenotypeGVCFs -V gendb://{database} -R {reference_fasta} -O {output_vcf} --tmp-dir {output_dir}/variants/ -L {intervals_fn} -G StandardAnnotation --seconds-between-progress-updates 120 # Run genotype
+  bcftools query -l {output_vcf}
+
+  bcftools stats -F {reference_fasta} -s- {output_vcf} > {comp_fn}
+  plot-vcfstats -p {plot_dir} -s {comp_fn}
+
+}
+
+
 ### Execution
 
 ## Mapping (BLAST)
@@ -136,11 +245,17 @@ done
 mkdir -p 20-Alignment
 for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 20-Alignment/${subf}
+  # Alignment
   bwa-mem2 index 11-Sequences/${subf}/${subf}.fasta
   bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} > 20-Alignment/${subf}/${subf}.sam
+  # Sam to BAM
   samtools view -bS 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} > 20-Alignment/${subf}/${subf}.bam
+  # Sort BAM (Coordinate) for Variant Call
+     20-Alignment/${subf}/${subf}.sort.sam -O bam 20-Alignment/${subf}/${subf}.sam -@ ${THREADS}
+  # Obtain Fastq's
   samtools collate 20-Alignment/${subf}/${subf}.bam 20-Alignment/${subf}/${subf}.collate
-  samtools fastq -1 20-Alignment/${subf}/${subf}_16S_R1.fastq -2 20-Alignment/${subf}/${subf}_16S_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam
+  samtools fastq -1 20-Alignment/${subf}/${subf}_R1.fastq -2 20-Alignment/${subf}/${subf}_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam
+  # Clean folder
   rm 20-Alignment/${subf}/${subf}.sam #20-Alignment/${subf}/${subf}.bam
   gzip 20-Alignment/${subf}/${subf}_*.fastq
 done
@@ -150,5 +265,14 @@ done
 # Nested folders
 # while read line ; do mkdir reads_"$line" ; mkdir reads_"$line"/"$line" ; mv 16S_"$line".fasta reads_"$line"/"$line"/. ; done<list.txt
 mkdir -p 30-VariantCalling
-python3 variant_calling.py -r 16S_"$line".fasta -s reads_"$line" -o output_"$line" -n project_"$line" -f .fastq.gz -p 2 -c 8
+for subf in $(ls ${INPUT_FOLDER}); do
+  mkdir -p 30-VariantCalling/${subf}
+  python3 00-scripts/variant_calling/variant_calling.py -r 11-Sequences/${subf}/${subf}.fasta -s 20-Alignment -o 30-VariantCalling/${subf} -n project_${subf} -f .fastq.gz -p 2 -c 8
+done
 
+
+
+
+
+mkdir -p 40-Phasing
+bash genome_phase.sh -s ${subf} -t 2 -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/*.vcf.gz -o 40-Phasing/${subf} 
