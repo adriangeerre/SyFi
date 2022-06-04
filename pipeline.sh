@@ -276,19 +276,15 @@ done
 ## Variant Calling (variant_calling.py)
 
 # Nested folders
-# while read line ; do mkdir reads_"$line" ; mkdir reads_"$line"/"$line" ; mv 16S_"$line".fasta reads_"$line"/"$line"/. ; done<list.txt
 mkdir -p 30-VariantCalling
 for subf in $(ls ${INPUT_FOLDER}); do
+  # Create folders
   mkdir -p 30-VariantCalling/${subf}
   mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
 
   # Variant call execution
   variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/CHA0_modified.filtered.bam project_${subf} 30-VariantCalling/${subf} ${THREADS}
-
 done
-
-
-
 
 # Phasing
 mkdir -p 40-Phasing
