@@ -137,7 +137,7 @@ function variantCalling() {
   printf "\n"
   echo "Performing Variant Calling"
 
-  # Kmer plots (avoid for the moment)
+  # Kmer plots (Avoided at the moment)
 
   # Mark duplicates (Mapping is already done)
   printf "\n"
@@ -168,7 +168,7 @@ function markDuplicates() {
   output_fn="${output_dir}/mapped_filtered/${sample}_stats.txt)"
 
   # Execution
-  gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/${sample}.filtered.bam -M ${output_dir}/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}
+  gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/mapped_filtered/${sample}.filtered.bam -M ${output_dir}/mapped_filtered/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}/mapped_filtered
 
   # Index BAM
   # samtools index -@ ${threads} -b ${filtered_bam} 
@@ -198,11 +198,11 @@ function haplotypeCaller() {
   gatk CreateSequenceDictionary -R {reference_fasta} -O {reference_dict}
 
   # Add read group to BAM
-  gatk AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
-  samtools index -b ${output_dir}/${sample}.filtered.readgroup.bam ${output_dir}/${sample}.filtered.readgroup.bai -@ ${threads}
+  gatk AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
+  samtools index -b ${output_dir}/genotyped/${sample}.filtered.readgroup.bam ${output_dir}/genotyped/${sample}.filtered.readgroup.bai -@ ${threads}
 
   # Execution
-  gatk --java-options "-Xmx${mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
+  gatk --java-options "-Xmx${mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
 }
 
 # FUNCTION: Joint Genotyping
@@ -214,6 +214,7 @@ function jointGenotype() {
   threads=$4
 
   # Variables
+  sample=$(echo ${projectname} | sed 's/project_//g')
   input_gvcf="${output_dir}/genotyped/${sample}.g.vcf.gz"
   intervals_fn="${output_dir}/reference/intervals.list"
   workspace_dir="${output_dir}/variants/db_workspace"
@@ -224,7 +225,7 @@ function jointGenotype() {
   plot_dir="${output_dir}/variants/${projectname}/"
 
   # Create intervals
-  cat ${output_dir}/${sample}.fasta.fai | awk '{print $1":1-"$2}' > ${intervals_fn}
+  cat 11-Sequences/${sample}/${sample}.fasta.fai | awk '{print $1":1-"$2}' > ${intervals_fn}
 
   # Execution
   # tabix -p vcf {input_gvcf} # Already done by gatk
@@ -279,10 +280,11 @@ done
 mkdir -p 30-VariantCalling
 for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 30-VariantCalling/${subf}
-  # Variant call execution
-  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict ... project_${subf} 30-VariantCalling/${subf} ${THREADS}
+  mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
 
-  #python3 00-scripts/variant_calling/variant_calling.py -r 11-Sequences/${subf}/${subf}.fasta -s 20-Alignment -o 30-VariantCalling/${subf} -n project_${subf} -f .fastq.gz -p 2 -c 8
+  # Variant call execution
+  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/CHA0_modified.filtered.bam project_${subf} 30-VariantCalling/${subf} ${THREADS}
+
 done
 
 
