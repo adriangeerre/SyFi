@@ -122,10 +122,16 @@ fi
 
 ### Functions
 
-## Variant Calling
+## FUNCTION: Variant Calling
 function variantCalling() {
   # Variables
-  
+  bam_file=$1
+  reference_fasta=$2
+  reference_dict=$3
+  input_bam=$4
+  projectname=$5
+  output_dir=$6
+  threads=$7
 
   # Intro messages
   printf "\n"
@@ -146,7 +152,7 @@ function variantCalling() {
   # Joint genotyping
   printf "\n"
   echo "Join genotyping"
-  jointGenotype 
+  jointGenotype ${reference_fasta} ${output_dir} ${projectname} ${threads}
 
 }
 
@@ -204,8 +210,8 @@ function jointGenotype() {
   # Arguments
   reference_fasta=$1
   output_dir=$2
-  projectname=$4
-  threads=$3
+  projectname=$3
+  threads=$4
 
   # Variables
   input_gvcf="${output_dir}/genotyped/${sample}.g.vcf.gz"
@@ -223,13 +229,13 @@ function jointGenotype() {
   # Execution
   # tabix -p vcf {input_gvcf} # Already done by gatk
 
-  gatk --java-options "-Xmx32g -Xms8g -Djava.io.tmpdir={output_dir}/variants/" GenomicsDBImport -V ${input_gvcf} -L {intervals_fn} --tmp-dir {output_dir}/variants/ --genomicsdb-workspace-path {workspace_dir} --batch-size 70 --seconds-between-progress-updates 120 --reader-threads {threads} {merge_intervals} # Run genotype (Create database)
+  gatk --java-options "-Xmx32g -Xms8g -Djava.io.tmpdir={output_dir}/variants/" GenomicsDBImport -V ${input_gvcf} -L ${intervals_fn} --tmp-dir ${output_dir}/variants/ --genomicsdb-workspace-path ${workspace_dir} --batch-size 70 --seconds-between-progress-updates 120 --reader-threads ${threads} ${merge_intervals} # Run genotype (Create database)
 
-  gatk --java-options "-Xmx32g -Djava.io.tmpdir={output_dir}/variants/" GenotypeGVCFs -V gendb://{database} -R {reference_fasta} -O {output_vcf} --tmp-dir {output_dir}/variants/ -L {intervals_fn} -G StandardAnnotation --seconds-between-progress-updates 120 # Run genotype
-  bcftools query -l {output_vcf}
+  gatk --java-options "-Xmx32g -Djava.io.tmpdir={output_dir}/variants/" GenotypeGVCFs -V gendb://${database} -R ${reference_fasta} -O ${output_vcf} --tmp-dir ${output_dir}/variants/ -L ${intervals_fn} -G StandardAnnotation --seconds-between-progress-updates 120 # Run genotype
+  bcftools query -l ${output_vcf}
 
-  bcftools stats -F {reference_fasta} -s- {output_vcf} > {comp_fn}
-  plot-vcfstats -p {plot_dir} -s {comp_fn}
+  bcftools stats -F ${reference_fasta} -s- ${output_vcf} > ${comp_fn}
+  plot-vcfstats -p ${plot_dir} -s ${comp_fn}
 
 }
 
@@ -273,12 +279,15 @@ done
 mkdir -p 30-VariantCalling
 for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 30-VariantCalling/${subf}
-  python3 00-scripts/variant_calling/variant_calling.py -r 11-Sequences/${subf}/${subf}.fasta -s 20-Alignment -o 30-VariantCalling/${subf} -n project_${subf} -f .fastq.gz -p 2 -c 8
+
+  variantCalling ...
+
+  #python3 00-scripts/variant_calling/variant_calling.py -r 11-Sequences/${subf}/${subf}.fasta -s 20-Alignment -o 30-VariantCalling/${subf} -n project_${subf} -f .fastq.gz -p 2 -c 8
 done
 
 
 
 
-
+# Phasing
 mkdir -p 40-Phasing
-bash genome_phase.sh -s ${subf} -t 2 -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/*.vcf.gz -o 40-Phasing/${subf} 
+bash genome_phase.sh -s ${subf} -t 2 -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/*.vcf.gz -o 40-Phasing/${subf}
