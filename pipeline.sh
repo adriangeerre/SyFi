@@ -263,7 +263,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Sam to BAM
   samtools view -bS 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} > 20-Alignment/${subf}/${subf}.bam
   # Sort BAM (Coordinate) for Variant Call
-     20-Alignment/${subf}/${subf}.sort.sam -O bam 20-Alignment/${subf}/${subf}.sam -@ ${THREADS}
+  20-Alignment/${subf}/${subf}.sort.sam -O bam 20-Alignment/${subf}/${subf}.sam -@ ${THREADS}
   # Obtain Fastq's
   samtools collate 20-Alignment/${subf}/${subf}.bam 20-Alignment/${subf}/${subf}.collate
   samtools fastq -1 20-Alignment/${subf}/${subf}_R1.fastq -2 20-Alignment/${subf}/${subf}_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam
@@ -279,8 +279,8 @@ done
 mkdir -p 30-VariantCalling
 for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 30-VariantCalling/${subf}
-
-  variantCalling ...
+  # Variant call execution
+  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict ... project_${subf} 30-VariantCalling/${subf} ${THREADS}
 
   #python3 00-scripts/variant_calling/variant_calling.py -r 11-Sequences/${subf}/${subf}.fasta -s 20-Alignment -o 30-VariantCalling/${subf} -n project_${subf} -f .fastq.gz -p 2 -c 8
 done
