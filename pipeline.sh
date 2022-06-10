@@ -288,6 +288,21 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Phasing
   bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -o 40-Phasing/${subf}
 
+  # Concatenate haplotypes and rename headers
+  mkdir -p 50-Haplotypes/${subf}
+  cat 40-Phasing/${subf}/${subf}_assembly_h1.fasta 40-Phasing/${subf}/${subf}_assembly_h2.fasta | sed 's/^> />/g'| sed "s|${subf}|${subf}_h1|" | sed -z "s/h1/h2/2" > 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
+
+  # Seqkit duplicate removal
+  seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
+
+  # Kallisto (Only applied to strains with more that one haplotype)
+  if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "2" ]
+  then
+    mkdir -p 60-Kallisto
+    kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
+    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
+  fi
+
 done
 
 # Phasing
