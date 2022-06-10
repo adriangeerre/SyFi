@@ -273,19 +273,22 @@ for subf in $(ls ${INPUT_FOLDER}); do
   gzip 20-Alignment/${subf}/${subf}_*.fastq
 done
 
-## Variant Calling (variant_calling.py)
+## Variant Calling & Phasing
 
-# Nested folders
-mkdir -p 30-VariantCalling
+# Folders
+mkdir -p 30-VariantCalling 40-Phasing
 for subf in $(ls ${INPUT_FOLDER}); do
   # Create folders
   mkdir -p 30-VariantCalling/${subf}
   mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
 
-  # Variant call execution
+  # Variant call
   variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/CHA0_modified.filtered.bam project_${subf} 30-VariantCalling/${subf} ${THREADS}
+
+  # Phasing
+  bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -o 40-Phasing/${subf}
+
 done
 
 # Phasing
-mkdir -p 40-Phasing
-bash genome_phase.sh -s ${subf} -t 2 -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/*.vcf.gz -o 40-Phasing/${subf}
+
