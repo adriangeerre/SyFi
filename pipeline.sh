@@ -252,7 +252,7 @@ mkdir -p 10-Blast 11-Sequences
 for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 11-Sequences/${subf}
   blastn -query ${INPUT_FOLDER}/${subf}/*.fasta -subject ${target} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
-  printf "> ${subf}\n$(cat 10-Blast/CHA0_modified.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
+  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 done 
 
 # List of strains
@@ -294,7 +294,19 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # Concatenate haplotypes and rename headers
   mkdir -p 50-Haplotypes/${subf}
-  cat 40-Phasing/${subf}/${subf}_assembly_h1.fasta 40-Phasing/${subf}/${subf}_assembly_h2.fasta | sed 's/^> />/g'| sed "s|${subf}|${subf}_h1|" | sed -z "s/h1/h2/2" > 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
+  hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
+
+  for n in $(seq ${hnum})
+  do
+    if [ ${n} -eq "1" ]
+    then
+      cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | sed -z "s|CHA0_modified|CHA0_modified_h${n}|${n}" > tmp
+      mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
+    else
+      cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|CHA0_modified|CHA0_modified_h${n}|${n}" > tmp
+      mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
+    fi
+  done
 
   # Seqkit duplicate removal
   seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
@@ -319,18 +331,39 @@ cat 60-Kallisto/*/abundance.tsv > 60-Kallisto/kallisto_output.tsv
 # II. Copy Number #
 # --------------- #
 
-# 
-glen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-rawb=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
-16Sl=$()
-16Sb=$()
+for subf in $(ls ${INPUT_FOLDER}); do
+  # Variables
+  glen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  rawb=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  16Sl=$(cat 11-Sequences/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  16Sb=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
-# Genome length
-printf "$line\t" >> genome_length.txt ; cat "$line".fasta | grep -v ">" | wc -c >> genome_length.txt
-#Bases in raw reads files 
-printf "$line\t" >> raw_read_bases.txt ; zcat "$line"_R[12].fastq.gz | paste - - - - | cut -f2 | wc -c >> raw_read_bases.txt
-#16S length
-printf "$line\t" >> 16S_length.txt ; cat 16S_"$line".fasta | grep -v ">" | wc -c >> 16S_length.txt
-#Bases in 16S read files
-printf "$line\t" >> 16S_read_bases.txt ; cat reads_"$line"/"$line"/"$line"_R[12].fastq.gz | paste - - - - | cut -f2 | wc -c >> 16S_read_bases.txt
+  # Compute ratio
+  cnum=${16Sb}/${16Sl} / ${rawb}/${glen}
+  cnum=$(awk "BEGIN {print }")
+  if [ ${cnum} -lt "0.5" ]
+  then
+    cnum="1"
+  elif [ ${cnum} -gt "25.5" ]
+  then
+    cnum="25"
+  fi
 
+  # File
+  printf "${subf}\t${glen}\t${rawb}\t${16Sl}\t${16Sb}\t${cnum}\n" > copy_number.tsv
+done
+
+# Compute ratio
+# 16S_copy_number = (16S_read_bases/16S_length) / (raw_read_bases/genome_length)
+# < 0.5 == 1 & >25.5 == 25
+
+
+# ---------------- #
+# III. Integration #
+# ---------------- #
+
+#
+
+# ---------------- #
+# IV. Fingerprints #
+# ---------------- #
