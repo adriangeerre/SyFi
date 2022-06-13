@@ -298,8 +298,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   for n in $(seq ${hnum})
   do
-    if [ ${n} -eq "1" ]
-    then
+    if [ ${n} -eq "1" ]; then
       cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | sed -z "s|CHA0_modified|CHA0_modified_h${n}|${n}" > tmp
       mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
     else
@@ -333,30 +332,22 @@ cat 60-Kallisto/*/abundance.tsv > 60-Kallisto/kallisto_output.tsv
 
 for subf in $(ls ${INPUT_FOLDER}); do
   # Variables
-  glen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-  rawb=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
-  16Sl=$(cat 11-Sequences/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-  16Sb=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  lgen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  braw=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  l16S=$(cat 11-Sequences/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
   # Compute ratio
-  cnum=${16Sb}/${16Sl} / ${rawb}/${glen}
-  cnum=$(awk "BEGIN {print }")
-  if [ ${cnum} -lt "0.5" ]
-  then
+  cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
+  if (( $(echo "${cnum} < 0.5" | bc -l) )); then
     cnum="1"
-  elif [ ${cnum} -gt "25.5" ]
-  then
+  elif (( $(echo "${cnum} > 25.5" | bc -l) )); then
     cnum="25"
   fi
 
   # File
-  printf "${subf}\t${glen}\t${rawb}\t${16Sl}\t${16Sb}\t${cnum}\n" > copy_number.tsv
+  printf "${subf}\t${lgen}\t${braw}\t${l16S}\t${b16S}\t${cnum}\n" > copy_number.tsv
 done
-
-# Compute ratio
-# 16S_copy_number = (16S_read_bases/16S_length) / (raw_read_bases/genome_length)
-# < 0.5 == 1 & >25.5 == 25
-
 
 # ---------------- #
 # III. Integration #
