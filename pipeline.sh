@@ -269,8 +269,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
   samtools view -bS 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} > 20-Alignment/${subf}/${subf}.bam
   # Sort BAM (Coordinate) for Variant Call
   20-Alignment/${subf}/${subf}.sort.sam -O bam 20-Alignment/${subf}/${subf}.sam -@ ${THREADS}
+  # Obtain BAM of mapped reads
+  samtools view -F 4 20-Alignment/${subf}/${subf}.bam > 20-Alignment/${subf}/${subf}.mapped.bam
   # Obtain Fastq's
-  samtools collate 20-Alignment/${subf}/${subf}.bam 20-Alignment/${subf}/${subf}.collate
+  samtools collate 20-Alignment/${subf}/${subf}.mapped.bam 20-Alignment/${subf}/${subf}.collate
   samtools fastq -1 20-Alignment/${subf}/${subf}_R1.fastq -2 20-Alignment/${subf}/${subf}_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam
   # Clean folder
   rm 20-Alignment/${subf}/${subf}.sam #20-Alignment/${subf}/${subf}.bam
@@ -317,10 +319,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
     kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
     kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
   fi
-
+  
   # Filter haplotypes
   Rscript filterHaplotypes.R 60-Kallisto/${subf}/abundance.tsv
-
 done
 
 # Merge Kallisto output
