@@ -243,6 +243,10 @@ function jointGenotype() {
 
 ### Execution
 
+#-------------- #
+# I. Haplotypes #
+#-------------- #
+
 ## Mapping (BLAST)
 mkdir -p 10-Blast 11-Sequences
 for subf in $(ls ${INPUT_FOLDER}); do
@@ -303,7 +307,30 @@ for subf in $(ls ${INPUT_FOLDER}); do
     kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
   fi
 
+  # Filter haplotypes
+  Rscript filterHaplotypes.R 60-Kallisto/${subf}/abundance.tsv
+
 done
 
-# Phasing
+# Merge Kallisto output
+cat 60-Kallisto/*/abundance.tsv > 60-Kallisto/kallisto_output.tsv
+
+# --------------- #
+# II. Copy Number #
+# --------------- #
+
+# 
+glen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+rawb=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+16Sl=$()
+16Sb=$()
+
+# Genome length
+printf "$line\t" >> genome_length.txt ; cat "$line".fasta | grep -v ">" | wc -c >> genome_length.txt
+#Bases in raw reads files 
+printf "$line\t" >> raw_read_bases.txt ; zcat "$line"_R[12].fastq.gz | paste - - - - | cut -f2 | wc -c >> raw_read_bases.txt
+#16S length
+printf "$line\t" >> 16S_length.txt ; cat 16S_"$line".fasta | grep -v ">" | wc -c >> 16S_length.txt
+#Bases in 16S read files
+printf "$line\t" >> 16S_read_bases.txt ; cat reads_"$line"/"$line"/"$line"_R[12].fastq.gz | paste - - - - | cut -f2 | wc -c >> 16S_read_bases.txt
 
