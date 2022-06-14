@@ -27,10 +27,12 @@ df <- read.delim(opt$i, header=T)
 
 # Transform
 # --------
+cutoff = 25
+
 while(TRUE) {
   minimum <- min(df$est_counts)
   v <- df$est_counts / minimum
-  if (max(v) > 25) {
+  if (max(v) > cutoff) {
     df <- df[df$est_counts != minimum,]
   } else {
     # Ratio
