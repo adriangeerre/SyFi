@@ -269,8 +269,8 @@ for subf in $(ls ${INPUT_FOLDER}); do
   samtools view -bS 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} > 20-Alignment/${subf}/${subf}.bam
   # Sort BAM (Coordinate) for Variant Call
   20-Alignment/${subf}/${subf}.sort.sam -O bam 20-Alignment/${subf}/${subf}.sam -@ ${THREADS}
-  # Obtain BAM of mapped reads
-  samtools view -F 4 20-Alignment/${subf}/${subf}.bam > 20-Alignment/${subf}/${subf}.mapped.bam
+  # Obtain BAM of mapped reads (properly pair)
+  samtools view -q 30 -f 0x2 20-Alignment/${subf}/${subf}.bam > 20-Alignment/${subf}/${subf}.mapped.bam 
   # Obtain Fastq's
   samtools collate 20-Alignment/${subf}/${subf}.mapped.bam 20-Alignment/${subf}/${subf}.collate
   samtools fastq -1 20-Alignment/${subf}/${subf}_R1.fastq -2 20-Alignment/${subf}/${subf}_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam
@@ -338,7 +338,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   l16S=$(cat 11-Sequences/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
   b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
-  # Compute ratio
+  # Compute ratio (round <1 to 1)
   cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
   if (( $(echo "${cnum} < 0.5" | bc -l) )); then
     cnum="1"
