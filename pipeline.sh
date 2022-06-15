@@ -14,7 +14,7 @@ function usage()
 {
     echo "Usage: $0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -p <PREFIX> -t <THREADS>"
     printf "\n"
-    echo "  -i  | --input_folder    Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more detail, execute <pipeline --folder_structure> (REQUIRED)."
+    echo "  -i  | --input_folder    Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure> (REQUIRED)."
     echo "  -s  | --search_target   Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
     echo "  -p  | --prefix          Prefix for output files (default: project)."
     echo "  -t  | --threads         Number of threads (default: 1)."
@@ -237,7 +237,6 @@ function jointGenotype() {
 
   bcftools stats -F ${reference_fasta} -s- ${output_vcf} > ${comp_fn}
   plot-vcfstats -p ${plot_dir} -s ${comp_fn}
-
 }
 
 
@@ -255,9 +254,6 @@ for subf in $(ls ${INPUT_FOLDER}); do
   printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 done 
 
-# List of strains
-# ls 11-Sequences/*.fasta | cut -d "." -f 1 > list.txt
-
 ## Alignment, SamToBam & BamToFastq (BWA + Samtools)
 mkdir -p 20-Alignment
 for subf in $(ls ${INPUT_FOLDER}); do
@@ -268,7 +264,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Sam to BAM
   samtools view -bS 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} > 20-Alignment/${subf}/${subf}.bam
   # Sort BAM (Coordinate) for Variant Call
-  20-Alignment/${subf}/${subf}.sort.sam -O bam 20-Alignment/${subf}/${subf}.sam -@ ${THREADS}
+  samtools sort -o 20-Alignment/${subf}/${subf}.sort.sam -O bam 20-Alignment/${subf}/${subf}.sam -@ ${THREADS}
   # Obtain BAM of mapped reads (properly pair)
   samtools view -q 30 -f 0x2 20-Alignment/${subf}/${subf}.bam > 20-Alignment/${subf}/${subf}.mapped.bam 
   # Obtain Fastq's
@@ -331,12 +327,16 @@ cat 60-Kallisto/*/abundance.tsv > 60-Kallisto/kallisto_output.tsv
 # II. Copy Number #
 # --------------- #
 
+# Header
+printf "Strain\tAll_reads\tAll_bases\t16S_reads\t16S_bases\tCopy_number\n" > copy_number.tsv
+
+# Loop
 for subf in $(ls ${INPUT_FOLDER}); do
   # Variables
   lgen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
   braw=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
   l16S=$(cat 11-Sequences/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-  b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  b16S=$(zcat 20-Alignment/${subf}/${subf}_mapped_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
   # Compute ratio (round <1 to 1)
   cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
@@ -347,7 +347,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   fi
 
   # File
-  printf "${subf}\t${lgen}\t${braw}\t${l16S}\t${b16S}\t${cnum}\n" > copy_number.tsv
+  printf "${subf}\t${lgen}\t${braw}\t${l16S}\t${b16S}\t${cnum}\n" >> copy_number.tsv
 done
 
 # ---------------- #
