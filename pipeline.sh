@@ -314,10 +314,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
   for n in $(seq ${hnum})
   do
     if [ ${n} -eq "1" ]; then
-      cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | sed -z "s|CHA0_modified|CHA0_modified_h${n}|${n}" > tmp
+      cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | sed -z "s|${subf}|${subf}_h${n}|${n}" > tmp
       mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
     else
-      cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|CHA0_modified|CHA0_modified_h${n}|${n}" > tmp
+      cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|${subf}|${subf}_h${n}|${n}" > tmp
       mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
     fi
   done
