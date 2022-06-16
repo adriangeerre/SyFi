@@ -124,7 +124,7 @@ fi
 # conda activate base
 
 ##phase variants and output vcf file
-if [ ! -f ${output_vcf}* ]; then
+if [ ! -f ${output_vcf} ]; then
     whatshap phase -o ${output_vcf} --reference ${ref_fasta} ${vcf_file} ${illumina_bam} --ignore-read-groups --sample ${sample} --indels --output-read-list ${output_list} 
 fi
 
