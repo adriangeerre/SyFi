@@ -18,6 +18,8 @@ function usage()
     echo "  -s  | --search_target   Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
     echo "  -p  | --prefix          Prefix for output files (default: project)."
     echo "  -t  | --threads         Number of threads (default: 1)."
+    echo "  -mn | --min_memory        Minimum memory required (default: 4GB)."
+    echo "  -mx | --max_memory        Maximum memory required (default: 8GB)."
     echo "  -h  | --help            Display help."
     echo "  -c  | --citation        Display citation."
     printf "\n"
@@ -53,6 +55,8 @@ function citation()
 # Default variables
 PREFIX='project'
 THREADS=1
+MIN_MEM=4
+MAX_MEM=8
 
 # display usage if 
 if [[ $# -lt 4  && $1 != "-h" && $1 != "--help" && $1 != "-c" && $1 != "--citation" && $1 != "--folder_structure" ]]; then
@@ -83,7 +87,15 @@ while [[ "$1" > 0 ]]; do
       shift
       THREADS=$1
       shift
-      ;;  
+      ;;
+    -mn | --min_mem)
+      MIN_MEM=$1
+      shift
+      ;;
+    -mx | --max_mem)
+      MAX_MEM=$1
+      shift
+      ;;
     -h | --help)
       usage
       exit
@@ -132,6 +144,8 @@ function variantCalling() {
   projectname=$5
   output_dir=$6
   threads=$7
+  min_mem=$8
+  max_mem=$9
 
   # Intro messages
   printf "\n"
@@ -142,12 +156,12 @@ function variantCalling() {
   # Mark duplicates (Mapping is already done)
   printf "\n"
   echo "Mark BAM duplicates"
-  markDuplicates ${bam_file} ${output_dir} ${threads}
+  markDuplicates ${bam_file} ${output_dir} ${threads} ${max_mem}
 
   # Haplotype caller
   printf "\n"
   echo "Haplotype calling"
-  haplotypeCaller ${reference_fasta} ${reference_dict} ${output_dir} ${input_bam}
+  haplotypeCaller ${reference_fasta} ${reference_dict} ${output_dir} ${input_bam} ${max_mem} ${min_mem}
 
   # Joint genotyping
   printf "\n"
@@ -165,7 +179,7 @@ function markDuplicates() {
 
   # Variables
   sample=$(basename ${bam_file} | sed 's/.bam//g')
-  output_fn="${output_dir}/mapped_filtered/${sample}_stats.txt)"
+  output_fn="${output_dir}/mapped_filtered/${sample}_stats.txt"
 
   # Execution
   gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/mapped_filtered/${sample}.filtered.bam -M ${output_dir}/mapped_filtered/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}/mapped_filtered
@@ -176,7 +190,6 @@ function markDuplicates() {
   # Plot BAM
   samtools stats -@ ${threads} -d ${bam_file} > ${output_fn}
   plot-bamstats -p ${output_dir}/mapped_filtered/ ${output_fn}
-
 }
 
 # FUNCTION: Haplotype Caller
@@ -186,6 +199,7 @@ function haplotypeCaller() {
   reference_dict=$2
   output_dir=$3
   input_bam=$4
+  max_mem=$5
 
   # Variables (-t genomic -m joint -a False -i False)
   sample=$(basename ${input_bam} | cut -d "." -f 1)
@@ -195,14 +209,17 @@ function haplotypeCaller() {
   ploidy=2
   
   # Create dictionary
-  gatk CreateSequenceDictionary -R {reference_fasta} -O {reference_dict}
+  gatk CreateSequenceDictionary -R ${reference_fasta} -O ${reference_dict}
 
   # Add read group to BAM
   gatk AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
   samtools index -b ${output_dir}/genotyped/${sample}.filtered.readgroup.bam ${output_dir}/genotyped/${sample}.filtered.readgroup.bai -@ ${threads}
 
+  # Index fasta
+  samtools faidx ${reference_fasta} -o ${reference_fasta}.fai
+
   # Execution
-  gatk --java-options "-Xmx${mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
+  gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
 }
 
 # FUNCTION: Joint Genotyping
@@ -212,6 +229,8 @@ function jointGenotype() {
   output_dir=$2
   projectname=$3
   threads=$4
+  max_mem=$5
+  min_mem=$6
 
   # Variables
   sample=$(echo ${projectname} | sed 's/project_//g')
@@ -230,10 +249,10 @@ function jointGenotype() {
   # Execution
   # tabix -p vcf {input_gvcf} # Already done by gatk
 
-  gatk --java-options "-Xmx32g -Xms8g -Djava.io.tmpdir={output_dir}/variants/" GenomicsDBImport -V ${input_gvcf} -L ${intervals_fn} --tmp-dir ${output_dir}/variants/ --genomicsdb-workspace-path ${workspace_dir} --batch-size 70 --seconds-between-progress-updates 120 --reader-threads ${threads} ${merge_intervals} # Run genotype (Create database)
+  gatk --java-options "-Xmx${max_mem}g -Xms${min_mem}g -Djava.io.tmpdir={output_dir}/variants/" GenomicsDBImport -V ${input_gvcf} -L ${intervals_fn} --tmp-dir ${output_dir}/variants/ --genomicsdb-workspace-path ${workspace_dir} --batch-size 70 --seconds-between-progress-updates 120 --reader-threads ${threads} ${merge_intervals} # Run genotype (Create database)
 
-  gatk --java-options "-Xmx32g -Djava.io.tmpdir={output_dir}/variants/" GenotypeGVCFs -V gendb://${database} -R ${reference_fasta} -O ${output_vcf} --tmp-dir ${output_dir}/variants/ -L ${intervals_fn} -G StandardAnnotation --seconds-between-progress-updates 120 # Run genotype
-  bcftools query -l ${output_vcf}
+  gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir={output_dir}/variants/" GenotypeGVCFs -V gendb://${database} -R ${reference_fasta} -O ${output_vcf} --tmp-dir ${output_dir}/variants/ -L ${intervals_fn} -G StandardAnnotation --seconds-between-progress-updates 120 # Run genotype
+  # bcftools query -l ${output_vcf}
 
   bcftools stats -F ${reference_fasta} -s- ${output_vcf} > ${comp_fn}
   plot-vcfstats -p ${plot_dir} -s ${comp_fn}
@@ -285,10 +304,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
 
   # Variant call
-  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/CHA0_modified.filtered.bam project_${subf} 30-VariantCalling/${subf} ${THREADS}
+  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam project_${subf} 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
 
   # Phasing
-  bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -o 40-Phasing/${subf}
+  bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 00-Data -o 40-Phasing/${subf}
 
   # Concatenate haplotypes and rename headers
   mkdir -p 50-Haplotypes/${subf}

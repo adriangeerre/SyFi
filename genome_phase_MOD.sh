@@ -1,12 +1,15 @@
 #!/bin/bash
 #Author: Petros Skiadas (p.skiadas@uu.nl)
 #Created on: October 19 2021
+#Modified by: Adrián Gómez Repollés (adrian.gomez@mbg.au.dk)
+#Modified on: June 16 2022
+#Version: 1.2.0
 
 #tools
 # source /opt/conda/anaconda3/etc/profile.d/conda.sh
 
 #parse input options
-while getopts "hs:t:r:v:o:" OPTION; do
+while getopts "hs:t:r:v:i:o:" OPTION; do
     case $OPTION in
         s)
             sample=${OPTARG};;
@@ -16,6 +19,8 @@ while getopts "hs:t:r:v:o:" OPTION; do
             ref_fasta=${OPTARG};;
         v)
             vcf_file=${OPTARG};;
+        i)
+            illumina_dir=${OPTARG};;
         o)
             output_dir=${OPTARG};;
         h)
@@ -45,13 +50,19 @@ if [ -z ${vcf_file} ]; then
     inputincomplete=true
 fi
 
+if [ -z ${illumina_dir} ]; then
+    echo "You must specify the folder for the illumina reads per sample (-i)">&2
+    inputincomplete=true
+fi
+
 if [ -z ${output_dir} ]; then
     echo "You must specify the path for the output directory (-o)">&2
     inputincomplete=true
 fi
 
 if [ ${inputincomplete} ]; then
-    echo "input is incomplete"
+    echo ""
+    echo "ERROR: input is incomplete"
     exit 1
 fi
 
@@ -61,20 +72,22 @@ fi
 SAMTOOLS="/home/au614901/Software/miniconda3/envs/NGSTools/bin/samtools"
 BCFTOOLS="/home/au614901/Software/miniconda3/envs/BCFTools/bin/bcftools"
 
-##input reads or bam files
-#reads
-illumina_dir="00-Data"
+##Bam file
 #bam
 illumina_bam="30-VariantCalling/${sample}/mapped_filtered/${sample}.filtered.bam"
+if [ ! -e ${illumina_bam} ]; then
+    echo "File ${illumina_bam} not found. Please, provide the file."
+    exit 1
+fi
 
 #output directories
 if [ ! -d ${output_dir} ]; then
-    mkdir ${output_dir}
+    mkdir -p ${output_dir}
 fi
 #mapping
 output_mapped=${output_dir}/mapped/
 if [ ! -d ${output_mapped} ]; then
-    mkdir ${output_mapped}
+    mkdir -p ${output_mapped}
 fi
 
 #expected output from mapping
@@ -86,20 +99,25 @@ output_list=${output_dir}/${sample}_reads.txt
 
 #mapping for short reads
 bwa_mapping () {
-    
+    # Variables
+    fasta=${1}
+    threads=${2}
+    output_illumina=${3}
+
+    # Paired-end reads
     R1="${illumina_dir}/${sample}/${sample}*_R1.fastq.gz"
     R2="${illumina_dir}/${sample}/${sample}*_R2.fastq.gz"
     
-    bwa-mem2 index ${1}
-    ${SAMTOOLS} faidx ${1}
-    bwa-mem2 mem -M -t ${threads} ${1} ${R1} ${R2} | ${SAMTOOLS} sort -@ 8 -m 1G - -o ${output_illumina}
+    # Alignment
+    # bwa-mem2 index ${fasta} # Already done in the variant calling
+    # ${SAMTOOLS} faidx ${fasta} # Already done in the variant calling
+    bwa-mem2 mem -M -t ${threads} ${fasta} ${R1} ${R2} | ${SAMTOOLS} sort -@ ${threads} -m 1G - -o ${output_illumina}
     ${SAMTOOLS} index -b ${output_illumina}
 }
 
-
 ##map to reference if no bam files
 if ! { [ -f ${illumina_bam} ] && [ -f ${output_illumina} ]; }; then
-    bwa_mapping ${ref_fasta}
+    bwa_mapping ${ref_fasta} ${threads} ${output_illumina}
 fi
 
 #activate conda enviroment with whatshap installation
@@ -107,8 +125,7 @@ fi
 
 ##phase variants and output vcf file
 if [ ! -f ${output_vcf}* ]; then
-    whatshap phase -o ${output_vcf} --reference ${ref_fasta} ${vcf_file} ${illumina_bam} \
-                   --ignore-read-groups --sample ${sample} --indels --output-read-list ${output_list}
+    whatshap phase -o ${output_vcf} --reference ${ref_fasta} ${vcf_file} ${illumina_bam} --ignore-read-groups --sample ${sample} --indels --output-read-list ${output_list} 
 fi
 
 ##visualise
