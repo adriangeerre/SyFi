@@ -141,11 +141,10 @@ function variantCalling() {
   reference_fasta=$2
   reference_dict=$3
   input_bam=$4
-  projectname=$5
-  output_dir=$6
-  threads=$7
-  min_mem=$8
-  max_mem=$9
+  output_dir=$5
+  threads=$6
+  min_mem=$7
+  max_mem=$8
 
   # Intro messages
   printf "\n"
@@ -156,17 +155,17 @@ function variantCalling() {
   # Mark duplicates (Mapping is already done)
   printf "\n"
   echo "Mark BAM duplicates"
-  markDuplicates ${bam_file} ${output_dir} ${threads} ${max_mem}
+  markDuplicates ${bam_file} ${output_dir} ${threads}
 
   # Haplotype caller
   printf "\n"
   echo "Haplotype calling"
-  haplotypeCaller ${reference_fasta} ${reference_dict} ${output_dir} ${input_bam} ${max_mem} ${min_mem}
+  haplotypeCaller ${reference_fasta} ${reference_dict} ${output_dir} ${input_bam} ${max_mem}
 
   # Joint genotyping
   printf "\n"
   echo "Join genotyping"
-  jointGenotype ${reference_fasta} ${output_dir} ${projectname} ${threads}
+  jointGenotype ${reference_fasta} ${output_dir} ${threads} ${max_mem} ${min_mem}
 
 }
 
@@ -227,21 +226,20 @@ function jointGenotype() {
   # Arguments
   reference_fasta=$1
   output_dir=$2
-  projectname=$3
-  threads=$4
-  max_mem=$5
-  min_mem=$6
+  threads=$3
+  max_mem=$4
+  min_mem=$5
 
   # Variables
-  sample=$(echo ${projectname} | sed 's/project_//g')
+  sample=$(basename ${reference_fasta} | sed 's/.fasta//g')
   input_gvcf="${output_dir}/genotyped/${sample}.g.vcf.gz"
   intervals_fn="${output_dir}/reference/intervals.list"
   workspace_dir="${output_dir}/variants/db_workspace"
   merge_intervals="--merge-input-intervals"
   database=${workspace_dir}
-  output_vcf="${output_dir}/variants/${projectname}.vcf.gz"
-  comp_fn="${output_dir}/variants/${projectname}.vchk"
-  plot_dir="${output_dir}/variants/${projectname}/"
+  output_vcf="${output_dir}/variants/${sample}.vcf.gz"
+  comp_fn="${output_dir}/variants/${sample}.vchk"
+  plot_dir="${output_dir}/variants/${sample}/"
 
   # Create intervals
   cat 11-Sequences/${sample}/${sample}.fasta.fai | awk '{print $1":1-"$2}' > ${intervals_fn}
@@ -304,7 +302,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
 
   # Variant call
-  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam project_${subf} 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
+  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
 
   # Phasing
   bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 00-Data -o 40-Phasing/${subf}
