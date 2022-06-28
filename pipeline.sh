@@ -267,6 +267,7 @@ function jointGenotype() {
 mkdir -p 10-Blast 11-Sequences
 for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 11-Sequences/${subf}
+  # Blastn
   blastn -query ${INPUT_FOLDER}/${subf}/*.fasta -subject ${target} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
   printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 done 
@@ -290,6 +291,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Clean folder
   rm 20-Alignment/${subf}/${subf}.sam #20-Alignment/${subf}/${subf}.bam
   gzip 20-Alignment/${subf}/${subf}_*.fastq
+
+  # SPAdes (Unambigous nucleotides assembly)
+	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM}
+	cp 20-Alignment/${subf}/spades/contigs.fasta 20-Alignment/${subf}/${subf}.fasta
 done
 
 ## Variant Calling & Phasing
@@ -302,7 +307,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
 
   # Variant call
-  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 11-Sequences/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
+  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 20-Alignment/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
 
   # Phasing
   bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 00-Data -o 40-Phasing/${subf}
@@ -331,10 +336,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
     mkdir -p 60-Kallisto
     kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
     kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
-  fi
-  
-  # Filter haplotypes
-  Rscript filterHaplotypes.R 60-Kallisto/${subf}/abundance.tsv
+
+    # Filter haplotypes
+    Rscript filterHaplotypes.R 60-Kallisto/${subf}/abundance.tsv
+  fi  
 done
 
 # Merge Kallisto output
