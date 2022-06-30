@@ -177,7 +177,7 @@ function markDuplicates() {
   threads=$3
 
   # Variables
-  sample=$(basename ${bam_file} | sed 's/.bam//g')
+  sample=$(basename ${bam_file} | sed 's/.sort.bam//g')
   output_fn="${output_dir}/mapped_filtered/${sample}_stats.txt"
 
   # Execution
@@ -187,7 +187,7 @@ function markDuplicates() {
   # samtools index -@ ${threads} -b ${filtered_bam} 
 
   # Plot BAM
-  samtools stats -@ ${threads} -d ${bam_file} > ${output_fn}
+  samtools stats -d ${bam_file} > ${output_fn}
   plot-bamstats -p ${output_dir}/mapped_filtered/ ${output_fn}
 }
 
@@ -263,6 +263,33 @@ function jointGenotype() {
 # I. Haplotypes #
 #-------------- #
 
+## NEW WAY!
+## Mapping (SPAdes and Blast)
+mkdir -p 10-Mapping/${subf} 11-Sequences/${subf}
+for subf in $(ls ${INPUT_FOLDER}); do
+  # SPAdes
+  spades.py -1 00-Data/${subf}/${subf}_R1.fastq.gz -2 00-Data/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 10-Mapping/${subf}/spades -m ${MAX_MEM}
+
+  # Blast
+  blastn -query 10-Mapping/${subf}/contigs.fasta -subject target.fna -strand both -outfmt "6 std qseq" > 10-Mapping/${subf}/blast_result.tsv
+  awk -v p="$subf" '{ $1=p; } 1' 10-Mapping/${subf}/blast_result.tsv | sed 's/^/>/' | awk '{print $1,$13}' | tr " " "\n" | sed 's/-//g' > 10-Mapping/${subf}/${subf}.fasta
+
+  # Name sequences after count
+  hnum=$(grep "^>" 10-Mapping/${subf}/${subf}.fasta | wc -l)
+  for n in $(seq ${hnum})
+  do
+    if [ ${n} -eq "1" ]; then
+      cat 10-Mapping/${subf}/${subf}.fasta | sed 's/^> />/g' | sed -z "s|${subf}|${subf}_seq${n}|${n}" > tmp
+      mv tmp 10-Mapping/${subf}/${subf}.fasta
+    else
+      cat 10-Mapping/${subf}/${subf}.fasta | sed -z "s|${subf}|${subf}_seq${n}|${n}" > tmp
+      mv tmp 10-Mapping/${subf}/${subf}.fasta
+    fi
+  done
+done
+#------------------------------------------------------------
+
+
 ## Mapping (BLAST)
 mkdir -p 10-Blast 11-Sequences
 for subf in $(ls ${INPUT_FOLDER}); do
@@ -293,8 +320,8 @@ for subf in $(ls ${INPUT_FOLDER}); do
   gzip 20-Alignment/${subf}/${subf}_*.fastq
 
   # SPAdes (Unambigous nucleotides assembly)
-	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM}
-	cp 20-Alignment/${subf}/spades/contigs.fasta 20-Alignment/${subf}/${subf}.fasta
+	# spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM}
+	# cp 20-Alignment/${subf}/spades/contigs.fasta 20-Alignment/${subf}/${subf}.fasta
 done
 
 ## Variant Calling & Phasing
@@ -310,6 +337,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   variantCalling 20-Alignment/${subf}/${subf}.sort.bam 20-Alignment/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
 
   # Phasing
+  mkdir -p 40-Phasing/${subf}
   bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 00-Data -o 40-Phasing/${subf}
 
   # Concatenate haplotypes and rename headers
@@ -331,15 +359,16 @@ for subf in $(ls ${INPUT_FOLDER}); do
   seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
 
   # Kallisto (Only applied to strains with more that one haplotype)
-  if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "2" ]
-  then
-    mkdir -p 60-Kallisto
-    kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
-    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
+if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "2" ]
+then
+  mkdir -p 60-Kallisto
+  kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
+  kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
 
-    # Filter haplotypes
-    Rscript filterHaplotypes.R 60-Kallisto/${subf}/abundance.tsv
-  fi  
+  # Filter haplotypes
+  cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
+  Rscript filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv
+fi  
 done
 
 # Merge Kallisto output
