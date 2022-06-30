@@ -31,6 +31,9 @@ cutoff = 25
 
 while(TRUE) {
   minimum <- min(df$est_counts)
+  if (minimum == 0) {
+    df <- df[df$est_counts != minimum,]
+  }
   v <- df$est_counts / minimum
   if (max(v) > cutoff) {
     df <- df[df$est_counts != minimum,]
