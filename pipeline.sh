@@ -18,8 +18,8 @@ function usage()
     echo "  -s  | --search_target   Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
     echo "  -p  | --prefix          Prefix for output files (default: project)."
     echo "  -t  | --threads         Number of threads (default: 1)."
-    echo "  -mn | --min_memory        Minimum memory required (default: 4GB)."
-    echo "  -mx | --max_memory        Maximum memory required (default: 8GB)."
+    echo "  -mn | --min_memory      Minimum memory required (default: 4GB)."
+    echo "  -mx | --max_memory      Maximum memory required (default: 8GB)."
     echo "  -h  | --help            Display help."
     echo "  -c  | --citation        Display citation."
     printf "\n"
@@ -217,7 +217,7 @@ function haplotypeCaller() {
   # Index fasta
   samtools faidx ${reference_fasta} -o ${reference_fasta}.fai
 
-  # Execution
+  # Execution (ERROR HERE!!)
   gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
 }
 
@@ -242,7 +242,7 @@ function jointGenotype() {
   plot_dir="${output_dir}/variants/${sample}/"
 
   # Create intervals
-  cat 11-Sequences/${sample}/${sample}.fasta.fai | awk '{print $1":1-"$2}' > ${intervals_fn}
+  cat 20-Alignment/${sample}/${sample}.fasta.fai | awk '{print $1":1-"$2}' > ${intervals_fn}
 
   # Execution
   # tabix -p vcf {input_gvcf} # Already done by gatk
@@ -253,7 +253,7 @@ function jointGenotype() {
   # bcftools query -l ${output_vcf}
 
   bcftools stats -F ${reference_fasta} -s- ${output_vcf} > ${comp_fn}
-  plot-vcfstats -p ${plot_dir} -s ${comp_fn}
+  plot-vcfstats -p ${plot_dir} -s ${comp_fn} # (ERROR HERE ...)
 }
 
 
@@ -263,30 +263,30 @@ function jointGenotype() {
 # I. Haplotypes #
 #-------------- #
 
-## NEW WAY!
+## NEW WAY! -> OLD WAY BETTER!
 ## Mapping (SPAdes and Blast)
-mkdir -p 10-Mapping/${subf} 11-Sequences/${subf}
-for subf in $(ls ${INPUT_FOLDER}); do
-  # SPAdes
-  spades.py -1 00-Data/${subf}/${subf}_R1.fastq.gz -2 00-Data/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 10-Mapping/${subf}/spades -m ${MAX_MEM}
+# mkdir -p 10-Mapping/${subf} 11-Sequences/${subf}
+# for subf in $(ls ${INPUT_FOLDER}); do
+#   # SPAdes
+#   spades.py -1 00-Data/${subf}/${subf}_R1.fastq.gz -2 00-Data/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 10-Mapping/${subf}/spades -m ${MAX_MEM}
 
-  # Blast
-  blastn -query 10-Mapping/${subf}/contigs.fasta -subject target.fna -strand both -outfmt "6 std qseq" > 10-Mapping/${subf}/blast_result.tsv
-  awk -v p="$subf" '{ $1=p; } 1' 10-Mapping/${subf}/blast_result.tsv | sed 's/^/>/' | awk '{print $1,$13}' | tr " " "\n" | sed 's/-//g' > 10-Mapping/${subf}/${subf}.fasta
+#   # Blast
+#   blastn -query 10-Mapping/${subf}/contigs.fasta -subject target.fna -strand both -outfmt "6 std qseq" > 10-Mapping/${subf}/blast_result.tsv
+#   awk -v p="$subf" '{ $1=p; } 1' 10-Mapping/${subf}/blast_result.tsv | sed 's/^/>/' | awk '{print $1,$13}' | tr " " "\n" | sed 's/-//g' > 10-Mapping/${subf}/${subf}.fasta
 
-  # Name sequences after count
-  hnum=$(grep "^>" 10-Mapping/${subf}/${subf}.fasta | wc -l)
-  for n in $(seq ${hnum})
-  do
-    if [ ${n} -eq "1" ]; then
-      cat 10-Mapping/${subf}/${subf}.fasta | sed 's/^> />/g' | sed -z "s|${subf}|${subf}_seq${n}|${n}" > tmp
-      mv tmp 10-Mapping/${subf}/${subf}.fasta
-    else
-      cat 10-Mapping/${subf}/${subf}.fasta | sed -z "s|${subf}|${subf}_seq${n}|${n}" > tmp
-      mv tmp 10-Mapping/${subf}/${subf}.fasta
-    fi
-  done
-done
+#   # Name sequences after count
+#   hnum=$(grep "^>" 10-Mapping/${subf}/${subf}.fasta | wc -l)
+#   for n in $(seq ${hnum})
+#   do
+#     if [ ${n} -eq "1" ]; then
+#       cat 10-Mapping/${subf}/${subf}.fasta | sed 's/^> />/g' | sed -z "s|${subf}|${subf}_seq${n}|${n}" > tmp
+#       mv tmp 10-Mapping/${subf}/${subf}.fasta
+#     else
+#       cat 10-Mapping/${subf}/${subf}.fasta | sed -z "s|${subf}|${subf}_seq${n}|${n}" > tmp
+#       mv tmp 10-Mapping/${subf}/${subf}.fasta
+#     fi
+#   done
+# done
 #------------------------------------------------------------
 
 
@@ -320,8 +320,16 @@ for subf in $(ls ${INPUT_FOLDER}); do
   gzip 20-Alignment/${subf}/${subf}_*.fastq
 
   # SPAdes (Unambigous nucleotides assembly)
-	# spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM}
-	# cp 20-Alignment/${subf}/spades/contigs.fasta 20-Alignment/${subf}/${subf}.fasta
+	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM}
+  cp 20-Alignment/${subf}/spades/contigs.fasta 20-Alignment/${subf}/${subf}.fasta
+
+  # Rebuilt BAM
+  bwa-mem2 index 20-Alignment/${subf}/${subf}.fasta
+  bwa-mem2 mem 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}_R1.fastq.gz 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} > 20-Alignment/${subf}/${subf}.rebuild.sam
+	samtools view -b 20-Alignment/${subf}/${subf}.rebuild.sam -@ ${THREADS} > 20-Alignment/${subf}/${subf}.rebuild.bam
+  samtools sort -o 20-Alignment/${subf}/${subf}.rebuild.sort.bam -O bam 20-Alignment/${subf}/${subf}.rebuild.bam -@ ${THREADS}
+  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.rebuild.bam > 20-Alignment/${subf}/${subf}.rebuild.mapped.bam
+
 done
 
 ## Variant Calling & Phasing
@@ -334,17 +342,17 @@ for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
 
   # Variant call
-  variantCalling 20-Alignment/${subf}/${subf}.sort.bam 20-Alignment/${subf}/${subf}.fasta 11-Sequences/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
+  variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.rebuild.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
 
   # Phasing
   mkdir -p 40-Phasing/${subf}
-  bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 11-Sequences/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 00-Data -o 40-Phasing/${subf}
+  bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment/${subf} -o 40-Phasing/${subf}
 
   # Concatenate haplotypes and rename headers
   mkdir -p 50-Haplotypes/${subf}
   hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
 
-  for n in $(seq ${hnum})
+  for n in $(seq ${hnum}) # This does not work!
   do
     if [ ${n} -eq "1" ]; then
       cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | sed -z "s|${subf}|${subf}_h${n}|${n}" > tmp
@@ -362,12 +370,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
 if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "2" ]
 then
   mkdir -p 60-Kallisto
-  kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
+  kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta # --make-unique
   kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
 
   # Filter haplotypes
   cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
-  Rscript filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv
+  Rscript 00-scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv
 fi  
 done
 
