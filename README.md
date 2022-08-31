@@ -6,14 +6,14 @@ This pipeline uses Illumina reads, contigs and a sequence target (e.g., 16S) to 
 
 The pipeline depends on:
 
-- Blast
-- Bwa-Mem2
-- Samtools
-- GATK
-- BCFtools
-- SeqKit
-- Kallisto
-- R
+- [Blast](https://blast.ncbi.nlm.nih.gov/Blast.cgi)
+- [Bwa-Mem2](https://github.com/bwa-mem2/bwa-mem2)
+- [Samtools](http://www.htslib.org/)
+- [GATK](https://github.com/broadinstitute/gatk)
+- [BCFtools](https://samtools.github.io/bcftools/)
+- [SeqKit](https://bioinf.shenwei.me/seqkit/)
+- [Kallisto](https://pachterlab.github.io/kallisto/about)
+- [R](https://www.r-project.org/)
 
 ## Installation
 
@@ -21,7 +21,7 @@ The pipeline depends on:
 
 Conda:
 
-The conda environment is supplemented in the repository. You can create the environment using "conda env create -f GijsPipeline.yml". Otherwise, you can try creating your own environment using running the following code:
+The conda environment is supplemented in the repository. You can create the environment using `conda env create -f GijsPipeline.yml`. Otherwise, you can try creating your own environment using running the following code:
 
 ```
 conda create -n GijsPipeline
