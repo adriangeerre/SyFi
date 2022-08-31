@@ -328,7 +328,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   for n in $(seq ${hnum})
   do
     if [ ${n} -eq "1" ]; then
-      cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/_[0-9]_length_.*//g' | sed -z "s|NODE|seq_${n}|${n}" > tmp
+      cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/_[0-9]_length_.*//g' | sed -z "s|NODE|seq_h${n}|${n}" > tmp
       mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
     else
       cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|NODE|seq_h${n}|1" > tmp
@@ -343,7 +343,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "2" ]
 then
   mkdir -p 60-Kallisto
-  kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta # --make-unique
+  kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
   kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
 
   # Filter haplotypes
