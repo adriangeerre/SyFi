@@ -34,7 +34,7 @@ conda install -c conda-forge r-base
 
 For the installation of GATK, we downloaded the pre-compile software from their Github site. In the following code we use the $SOFTWARE_FOLDER_PATH variable to define a potential software folder. Please, modify the code with your own folder path.
 
-[GATK](https://github.com/broadinstitute/gatk/releases):
+GATK:
 ```
 cd $SOFTWARE_FOLDER_PATH
 wget https://github.com/broadinstitute/gatk/archive/refs/tags/4.2.6.1.tar.gz
