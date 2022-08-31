@@ -263,33 +263,6 @@ function jointGenotype() {
 # I. Haplotypes #
 #-------------- #
 
-## NEW WAY! -> OLD WAY BETTER!
-## Mapping (SPAdes and Blast)
-# mkdir -p 10-Mapping/${subf} 11-Sequences/${subf}
-# for subf in $(ls ${INPUT_FOLDER}); do
-#   # SPAdes
-#   spades.py -1 00-Data/${subf}/${subf}_R1.fastq.gz -2 00-Data/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 10-Mapping/${subf}/spades -m ${MAX_MEM}
-
-#   # Blast
-#   blastn -query 10-Mapping/${subf}/contigs.fasta -subject target.fna -strand both -outfmt "6 std qseq" > 10-Mapping/${subf}/blast_result.tsv
-#   awk -v p="$subf" '{ $1=p; } 1' 10-Mapping/${subf}/blast_result.tsv | sed 's/^/>/' | awk '{print $1,$13}' | tr " " "\n" | sed 's/-//g' > 10-Mapping/${subf}/${subf}.fasta
-
-#   # Name sequences after count
-#   hnum=$(grep "^>" 10-Mapping/${subf}/${subf}.fasta | wc -l)
-#   for n in $(seq ${hnum})
-#   do
-#     if [ ${n} -eq "1" ]; then
-#       cat 10-Mapping/${subf}/${subf}.fasta | sed 's/^> />/g' | sed -z "s|${subf}|${subf}_seq${n}|${n}" > tmp
-#       mv tmp 10-Mapping/${subf}/${subf}.fasta
-#     else
-#       cat 10-Mapping/${subf}/${subf}.fasta | sed -z "s|${subf}|${subf}_seq${n}|${n}" > tmp
-#       mv tmp 10-Mapping/${subf}/${subf}.fasta
-#     fi
-#   done
-# done
-#------------------------------------------------------------
-
-
 ## Mapping (BLAST)
 mkdir -p 10-Blast 11-Sequences
 for subf in $(ls ${INPUT_FOLDER}); do
@@ -352,13 +325,13 @@ for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 50-Haplotypes/${subf}
   hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
 
-  for n in $(seq ${hnum}) # This does not work!
+  for n in $(seq ${hnum})
   do
     if [ ${n} -eq "1" ]; then
-      cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | sed -z "s|${subf}|${subf}_h${n}|${n}" > tmp
+      cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/_[0-9]_length_.*//g' | sed -z "s|NODE|seq_${n}|${n}" > tmp
       mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
     else
-      cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|${subf}|${subf}_h${n}|${n}" > tmp
+      cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|NODE|seq_h${n}|1" > tmp
       mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
     fi
   done
