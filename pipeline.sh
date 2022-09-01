@@ -89,10 +89,12 @@ while [[ "$1" > 0 ]]; do
       shift
       ;;
     -mn | --min_mem)
+      shift
       MIN_MEM=$1
       shift
       ;;
     -mx | --max_mem)
+      shift
       MAX_MEM=$1
       shift
       ;;
@@ -106,8 +108,10 @@ while [[ "$1" > 0 ]]; do
       ;;
     --folder_structure)
       folder_structure
+      exit
       ;;
     *)
+      echo $1
       echo "ERROR: Missing parameter."
       exit
       ;;
@@ -120,6 +124,7 @@ trap ctrl_c INT
 
 function ctrl_c() {
   printf "\nExecution halted by user.\n"
+  printf "\nExecution halted by user.\n" >> log.txt
   exit
 }
 
@@ -177,14 +182,14 @@ function markDuplicates() {
   threads=$3
 
   # Variables
-  sample=$(basename ${bam_file} | sed 's/.sort.bam//g')
+  sample=$(basename ${bam_file} | sed 's/.rebuild.sort.bam//g')
   output_fn="${output_dir}/mapped_filtered/${sample}_stats.txt"
 
   # Execution
   gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/mapped_filtered/${sample}.filtered.bam -M ${output_dir}/mapped_filtered/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}/mapped_filtered
 
   # Index BAM
-  # samtools index -@ ${threads} -b ${filtered_bam} 
+  # samtools index -@ ${threads} -b ${filtered_bam}
 
   # Plot BAM
   samtools stats -d ${bam_file} > ${output_fn}
@@ -253,7 +258,7 @@ function jointGenotype() {
   # bcftools query -l ${output_vcf}
 
   bcftools stats -F ${reference_fasta} -s- ${output_vcf} > ${comp_fn}
-  plot-vcfstats -p ${plot_dir} -s ${comp_fn} # (ERROR HERE ...)
+  plot-vcfstats -p ${plot_dir} -s ${comp_fn} # (ERROR HERE!)
 }
 
 
@@ -263,63 +268,97 @@ function jointGenotype() {
 # I. Haplotypes #
 #-------------- #
 
-## Mapping (BLAST)
-mkdir -p 10-Blast 11-Sequences
 for subf in $(ls ${INPUT_FOLDER}); do
-  mkdir -p 11-Sequences/${subf}
-  # Blastn
-  blastn -query ${INPUT_FOLDER}/${subf}/*.fasta -subject ${target} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
-  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
-done 
 
-## Alignment, SamToBam & BamToFastq (BWA + Samtools)
-mkdir -p 20-Alignment
-for subf in $(ls ${INPUT_FOLDER}); do
+  printf "\nSample: $subf\n"
+
+  ## ------------------------------------
+  ## Target recovery from contigs (BLAST)
+  ## ------------------------------------
+
+  printf "Performing: Mapping; "
+
+  # Create folder
+  mkdir -p 10-Blast 11-Sequences/${subf}
+  # Blastn
+  blastn -query ${INPUT_FOLDER}/${subf}/*.fasta -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
+  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
+
+  ## --------------------------------------------------
+  ## Recover pair-end reads for target (BWA & Samtools)
+  ## --------------------------------------------------
+
+  # Create folder
   mkdir -p 20-Alignment/${subf}
+
+  printf "Alignment; " 
+
   # Alignment
-  bwa-mem2 index 11-Sequences/${subf}/${subf}.fasta
-  bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} > 20-Alignment/${subf}/${subf}.sam
+  printf "### BWA mapping ###\n\n" > log.txt
+  bwa-mem2 index 11-Sequences/${subf}/${subf}.fasta &>> log.txt
+  bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} 2>> log.txt > 20-Alignment/${subf}/${subf}.sam
+
   # Sam to BAM
-  samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} > 20-Alignment/${subf}/${subf}.bam
+  samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> log.txt > 20-Alignment/${subf}/${subf}.bam
   # Sort BAM (Coordinate) for Variant Call
-  samtools sort -o 20-Alignment/${subf}/${subf}.sort.bam -O bam 20-Alignment/${subf}/${subf}.bam -@ ${THREADS}
+  samtools sort -o 20-Alignment/${subf}/${subf}.sort.bam -O bam 20-Alignment/${subf}/${subf}.bam -@ ${THREADS} 2>> log.txt
   # Obtain BAM of mapped reads (properly pair)
-  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.bam > 20-Alignment/${subf}/${subf}.mapped.bam 
+  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.bam 2>> log.txt > 20-Alignment/${subf}/${subf}.mapped.bam
+
+  printf "Reads recovery; "
+
   # Obtain Fastq's
-  samtools collate 20-Alignment/${subf}/${subf}.mapped.bam 20-Alignment/${subf}/${subf}.collate
-  samtools fastq -1 20-Alignment/${subf}/${subf}_R1.fastq -2 20-Alignment/${subf}/${subf}_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam
+  printf "\n\n### Reads recovery ###\n\n" >> log.txt
+  samtools collate 20-Alignment/${subf}/${subf}.mapped.bam 20-Alignment/${subf}/${subf}.collate 2>> log.txt
+  samtools fastq -1 20-Alignment/${subf}/${subf}_R1.fastq -2 20-Alignment/${subf}/${subf}_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam 2>> log.txt
   # Clean folder
-  rm 20-Alignment/${subf}/${subf}.sam #20-Alignment/${subf}/${subf}.bam
-  gzip 20-Alignment/${subf}/${subf}_*.fastq
+  rm 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.bam
+  gzip -f 20-Alignment/${subf}/${subf}_*.fastq
+
+  ## --------------------------------------------------
+  ## Rebuild target from reads (SPAdes, BWA & Samtools)
+  ## --------------------------------------------------
+
+  printf "Contig re-build; "
 
   # SPAdes (Unambigous nucleotides assembly)
-	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM}
+  printf "\n\n### Contig re-build ###\n\n" >> log.txt
+	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM} &>> log.txt
   cp 20-Alignment/${subf}/spades/contigs.fasta 20-Alignment/${subf}/${subf}.fasta
 
-  # Rebuilt BAM
-  bwa-mem2 index 20-Alignment/${subf}/${subf}.fasta
-  bwa-mem2 mem 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}_R1.fastq.gz 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} > 20-Alignment/${subf}/${subf}.rebuild.sam
-	samtools view -b 20-Alignment/${subf}/${subf}.rebuild.sam -@ ${THREADS} > 20-Alignment/${subf}/${subf}.rebuild.bam
-  samtools sort -o 20-Alignment/${subf}/${subf}.rebuild.sort.bam -O bam 20-Alignment/${subf}/${subf}.rebuild.bam -@ ${THREADS}
-  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.rebuild.bam > 20-Alignment/${subf}/${subf}.rebuild.mapped.bam
+  # Align
+  printf "\n\n### Contig re-alignment (BWA) ###\n\n" >> log.txt
+  bwa-mem2 index 20-Alignment/${subf}/${subf}.fasta &>> log.txt
+  bwa-mem2 mem 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}_R1.fastq.gz 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} 2>> log.txt > 20-Alignment/${subf}/${subf}.rebuild.sam
+	
+  samtools view -b 20-Alignment/${subf}/${subf}.rebuild.sam -@ ${THREADS} 2>> log.txt > 20-Alignment/${subf}/${subf}.rebuild.bam
+  samtools sort -o 20-Alignment/${subf}/${subf}.rebuild.sort.bam -O bam 20-Alignment/${subf}/${subf}.rebuild.bam -@ ${THREADS} 2>> log.txt
+  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.rebuild.bam 2>> log.txt > 20-Alignment/${subf}/${subf}.rebuild.mapped.bam 
 
-done
+  ## -------------------------------------------
+  ## Variant Calling & Phasing (GATK & BCFTools)
+  ## -------------------------------------------
 
-## Variant Calling & Phasing
-
-# Folders
-mkdir -p 30-VariantCalling 40-Phasing
-for subf in $(ls ${INPUT_FOLDER}); do
   # Create folders
   mkdir -p 30-VariantCalling/${subf}
   mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
 
+  printf "Variant calling; "
+
   # Variant call
-  variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.rebuild.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM}
+  printf "\n\n### Variant calling ###\n\n" >> log.txt
+  variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM} &>> log.txt
+
+  # Create folder
+  mkdir -p 40-Phasing/${subf}
+
+  printf "Phasing; "
 
   # Phasing
-  mkdir -p 40-Phasing/${subf}
-  bash 00-scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment/${subf} -o 40-Phasing/${subf}
+  printf "\n\n### Phasing ###\n\n" >> log.txt
+  bash 00-Scripts/genome_phase_MOD.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment -o 40-Phasing/${subf} &>> log.txt
+
+  exit
 
   # Concatenate haplotypes and rename headers
   mkdir -p 50-Haplotypes/${subf}
@@ -336,20 +375,29 @@ for subf in $(ls ${INPUT_FOLDER}); do
     fi
   done
 
-  # Seqkit duplicate removal
-  seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
+  # Haplotype duplicate removal (SeqKit)
+  seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta >> log.txt
+
+  ## ------------------------------------
+  ## Haplotype abundance ratio (Kallisto)
+  ## ------------------------------------
 
   # Kallisto (Only applied to strains with more that one haplotype)
-if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "2" ]
-then
-  mkdir -p 60-Kallisto
-  kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
-  kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz
+  if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "2" ]
+  then
+    # Create folder
+    mkdir -p 60-Kallisto
 
-  # Filter haplotypes
-  cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
-  Rscript 00-scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv
-fi  
+    printf "Abundance ratio\n"
+
+    # Kallisto
+    kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta >> log.txt
+    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz >> log.txt
+
+    # Filter haplotypes
+    cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
+    Rscript 00-scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv
+  fi  
 done
 
 # Merge Kallisto output

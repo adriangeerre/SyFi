@@ -136,7 +136,7 @@ fi
 
 #zip and index vcf
 if [ ! -f ${output_vcf}.gz ]; then
-    bgzip -c ${output_vcf} > ${output_vcf}.gz
+    gzip -c ${output_vcf} > ${output_vcf}.gz
     tabix -p vcf ${output_vcf}.gz
 fi
 
