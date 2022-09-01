@@ -28,7 +28,7 @@ The conda environment is supplemented in the repository. You can create the envi
 conda create -n GijsPipeline -y
 conda activate GijsPipeline
 conda install -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap=0.17 python=3.6.13 tabix
-conda install -c conda-forge r-base
+conda install -c conda-forge r-base r-optparse
 
 # Correct Samtools libcrypto.so error: (Whatshap still incompatible!)
 # cd anaconda/envs/GijsPipeline/lib
