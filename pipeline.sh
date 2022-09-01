@@ -358,8 +358,6 @@ for subf in $(ls ${INPUT_FOLDER}); do
   printf "\n\n### Phasing ###\n\n" >> log.txt
   bash 00-Scripts/genome_phase_MOD.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment -o 40-Phasing/${subf} &>> log.txt
 
-  exit
-
   # Concatenate haplotypes and rename headers
   mkdir -p 50-Haplotypes/${subf}
   hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
@@ -376,7 +374,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   done
 
   # Haplotype duplicate removal (SeqKit)
-  seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta >> log.txt
+  seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta 2>> log.txt > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
 
   ## ------------------------------------
   ## Haplotype abundance ratio (Kallisto)
@@ -391,13 +389,14 @@ for subf in $(ls ${INPUT_FOLDER}); do
     printf "Abundance ratio\n"
 
     # Kallisto
-    kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta >> log.txt
-    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz >> log.txt
+    printf "\n\n### Kallisto ###\n\n" >> log.txt
+    kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta &>> log.txt
+    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz &>> log.txt
 
     # Filter haplotypes
     cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
-    Rscript 00-scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv
-  fi  
+    Rscript 00-scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv >> log.txt
+  fi
 done
 
 # Merge Kallisto output

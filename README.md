@@ -20,7 +20,7 @@ The pipeline depends on:
 
 ### Build conda environment
 
-Conda:
+__Conda:__
 
 The conda environment is supplemented in the repository. You can create the environment using `conda env create -f GijsPipeline.yml`. Otherwise, you can try creating your own environment using running the following code:
 
@@ -39,7 +39,7 @@ conda install -c conda-forge r-base
 
 For the installation of GATK, we downloaded the pre-compile software from their Github site. In the following code we use the $SOFTWARE_FOLDER_PATH variable to define a potential software folder. Please, modify the code with your own folder path.
 
-GATK:
+__GATK:__
 ```
 cd $SOFTWARE_FOLDER_PATH
 wget https://github.com/broadinstitute/gatk/archive/refs/tags/4.2.6.1.tar.gz
@@ -47,7 +47,7 @@ tar -xvzf 4.2.6.1.tar.gz
 echo 'export PATH="$SOFTWARE_FOLDER_PATH/gatk-4.2.6.1:$PATH"' >> $HOME/.bashrc
 ```
 
-Samtools:
+__Samtools:__
 
 Unfortunately, the softwares Samtools and Whatshap can not be installed in the same conda environment. After testing long, we found major incompatibilities between the packages among the different available version. Thus, we decided to install samtools and htslib manually because whatshap only provide the conda installation.
 
