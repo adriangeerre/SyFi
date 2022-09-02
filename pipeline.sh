@@ -296,7 +296,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Alignment
   printf "### BWA mapping ###\n\n" > 01-Logs/log_${subf}.txt
   bwa-mem2 index 11-Sequences/${subf}/${subf}.fasta &>> 01-Logs/log_${subf}.txt
-  bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} 2>> log_${subf}.txt > 20-Alignment/${subf}/${subf}.sam
+  bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.sam
 
   # Sam to BAM
   samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
@@ -391,7 +391,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # Kallisto
     printf "\n\n### Kallisto ###\n\n" >> 01-Logs/log_${subf}.txt
     kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta &>> 01-Logs/log_${subf}.txt
-    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz &>> 01-Logs/log_${subf}.txt
+    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz -t ${THREADS} &>> 01-Logs/log_${subf}.txt
 
     # Filter haplotypes
     cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
@@ -414,8 +414,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Variables
   lgen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
   braw=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
-  l16S=$(cat 11-Sequences/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-  b16S=$(zcat 20-Alignment/${subf}/${subf}_mapped_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  # Get longest recovered contig of target
+  l16S=$(cat 20-Alignment/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
   # Compute ratio (round <1 to 1)
   cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
