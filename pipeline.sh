@@ -381,7 +381,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   ## ------------------------------------
 
   # Kallisto (Only applied to strains with more that one haplotype)
-  if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "2" ]
+  if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "1" ]
   then
     # Create folder
     mkdir -p 60-Kallisto
