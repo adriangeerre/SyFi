@@ -393,7 +393,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # Create folder
     mkdir -p 60-Kallisto
 
-    printf "Abundance ratio\n"
+    printf "Abundance ratio; "
 
     # Kallisto
     printf "\n\n### Kallisto ###\n\n" >> 01-Logs/log_${subf}.txt
@@ -464,8 +464,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # ---------------- #
 
   printf "Integration; \n"
+  # Create folder
+  printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
+  mkdir -p 70-Integration/${subf}
 
-  Rscript 00-Scripts/Integration.R -r 60-Kallisto/${subf}/abundance.tsv -c 60-Kallisto/${subf}/copy_number.tsv -i ${subf} 01-Logs/log_${subf}.txt
+  # Integrate step I and II
+  Rscript 00-Scripts/Integration.R -r 60-Kallisto/${subf}/abundance.tsv -c 60-Kallisto/${subf}/copy_number.tsv -i ${subf} &>> 01-Logs/log_${subf}.txt
 
 done
 

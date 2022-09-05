@@ -23,15 +23,21 @@ opt = parse_args(OptionParser(option_list=option_list))
 
 # Data
 # ----
-abun <- read.delim(opt$r, header=T)
-cnum <- read.delim(opt$c, header=T)
+abun <- read.delim(opt$haplo_ratio, header=T)
+cnum <- read.delim(opt$copy_number, header=T)
 
 # Integration
 # -----------
+# First computation
 abun$ratio_round <- round(abun$ratio)
 abun$copy_number <- cnum$Copy_number
 abun$haplotype_divisible <- sum(abun$ratio_round)
 abun$proportion <- abun$copy_number / abun$haplotype_divisible
+abun$proportion_round <- round(abun$proportion)
+abun$final_output <- unique(abun$proportion_round) * abun$haplotype_divisible
+abun$per_haplotype <- unique(abun$proportion_round) * abun$ratio_round
+
+# Check and recompute, if necessary
 while (unique(abun$proportion < 0.5) | nrow(abun) == 0) {
   # Remove haplotype with lowest ratio
   min_ratio <- min(abun$ratio)
@@ -43,12 +49,8 @@ while (unique(abun$proportion < 0.5) | nrow(abun) == 0) {
   abun$proportion_round <- round(abun$proportion)
   abun$final_output <- unique(abun$proportion_round) * abun$haplotype_divisible
   abun$per_haplotype <- unique(abun$proportion_round) * abun$ratio_round
-} else {
-  abun$proportion_round <- round(abun$proportion)
-  abun$final_output <- unique(abun$proportion_round) * abun$haplotype_divisible
-  abun$per_haplotype <- unique(abun$proportion_round) * abun$ratio_round
 }
 
 # Save
 # ----
-write.table(abun, file="", quote=F, col.names=T, row.names=F, sep="\t")
+write.table(abun, file=paste("70-Integration/", opt$i, "/integration.tsv", sep=""), quote=F, col.names=T, row.names=F, sep="\t")
