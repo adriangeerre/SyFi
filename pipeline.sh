@@ -482,7 +482,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   seqkit split -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta -O 80-Fingerprints/${subf} &>> 01-Logs/log_${subf}.txt
 
   # Rename haplotypes files
-  for i in $(ls -d 80-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/clean_${subf}_haplotypes.part_//g"); done
+  for i in $(ls -d 80-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/clean_${subf}_haplotypes.part_//g"); done &>> 01-Logs/log_${subf}.txt
 
   # Keep haplotypes filtered in integration
   keep=($(tail -n +2 70-Integration/01L31/integration.tsv | cut -f 1))
@@ -495,6 +495,6 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # Concatenate haplotypes
   printf ">${subf}_all_haplotypes\n" > 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
-  cat 80-Fingerprints/${subf}/* | tail -n +2 | sed -e 's/[0-9]//g' | sed 's/>seq_h/NNNNNNNNNN/g' | tr -d "\n" >> 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+  cat 80-Fingerprints/${subf}/seq_h* | tail -n +2 | sed -e 's/[0-9]//g' | sed 's/>seq_h/NNNNNNNNNN/g' | tr -d "\n" >> 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
 
 done
