@@ -412,7 +412,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # II. Copy Number #
   # --------------- #
 
-  printf "Copy number\n"
+  printf "Copy number; "
 
   # Log
   printf "\n\n### Target Copy Number ###\n\n" >> 01-Logs/log_${subf}.txt
@@ -426,7 +426,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Get number of bases in assembly reads
   braw=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
-  if [ $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) > 1 ]
+  if [ $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) -gt 1 ]
   then
     # Get length target (16S) - Select sequences ± BPDEV from target
     tl=$(grep -v "^>" target.fna | wc -c)
@@ -463,7 +463,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # III. Integration #
   # ---------------- #
 
-  Rscript 00-Scripts/Integration.R -r 60-Kallisto/${subf}/abundance.tsv -c 60-Kallisto/${subf}/copy_number.tsv -i ${subf}
+  printf "Integration; \n"
+
+  Rscript 00-Scripts/Integration.R -r 60-Kallisto/${subf}/abundance.tsv -c 60-Kallisto/${subf}/copy_number.tsv -i ${subf} 01-Logs/log_${subf}.txt
 
 done
 
