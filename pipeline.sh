@@ -447,7 +447,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
   fi
 
-  # Compute ratio (round <1 to 1)
+   Compute ratio (round <1 to 1)
   cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
   if (( $(echo "${cnum} < 0.5" | bc -l) )); then
     cnum="1"
@@ -471,16 +471,29 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Integrate step I and II
   Rscript 00-Scripts/Integration.R -r 60-Kallisto/${subf}/abundance.tsv -c 60-Kallisto/${subf}/copy_number.tsv -i ${subf} &>> 01-Logs/log_${subf}.txt
 
+  # ---------------- #
+  # IV. Fingerprints #
+  # ---------------- #
+
+  printf "Fingerprint\n"
+  printf "\n\n### Fingerprint ###\n\n" >> 01-Logs/log_${subf}.txt
+
+  # Separate fasta into multiples fasta
+  seqkit split -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta -O 80-Fingerprints/${subf} &>> 01-Logs/log_${subf}.txt
+
+  # Rename haplotypes files
+  for i in $(ls -d 80-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/clean_${subf}_haplotypes.part_//g"); done
+
+  # Keep haplotypes filtered in integration
+  keep=($(tail -n +2 70-Integration/01L31/integration.tsv | cut -f 1))
+  for i in $(ls 80-Fingerprints/${subf} | sed 's/.fasta//g'); do
+    if [[ ! "${keep[*]}" =~ "${i}" ]]
+    then
+      rm -f 80-Fingerprints/${subf}/${i}.fasta
+    fi
+  done
+
+  # Concatenate haplotypes
+  cat 80-Fingerprints/${subf}/* | tail -n +2 | sed -e 's/[0-9]//g' | sed 's/>seq_h/NNNNNNNNNN/g' | tr -d "\n" > 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+
 done
-
-# ---------------- #
-# IV. Fingerprints #
-# ---------------- #
-
-# Separate fasta into multiples fasta
-# seqkit split ...
-
-# Rename haplotypes files
-#
-
-
