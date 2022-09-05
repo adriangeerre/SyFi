@@ -16,6 +16,7 @@ function usage()
     printf "\n"
     echo "  -i  | --input_folder    Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure> (REQUIRED)."
     echo "  -s  | --search_target   Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
+    echo "  -d  | --len_deviation   Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)"
     echo "  -p  | --prefix          Prefix for output files (default: project)."
     echo "  -t  | --threads         Number of threads (default: 1)."
     echo "  -mn | --min_memory      Minimum memory required (default: 4GB)."
@@ -57,6 +58,7 @@ PREFIX='project'
 THREADS=1
 MIN_MEM=4
 MAX_MEM=8
+BPDEV=100
 
 # display usage if 
 if [[ $# -lt 4  && $1 != "-h" && $1 != "--help" && $1 != "-c" && $1 != "--citation" && $1 != "--folder_structure" ]]; then
@@ -76,6 +78,11 @@ while [[ "$1" > 0 ]]; do
     -s | --search_target)
       shift
       SEARCH_TARGET=$1
+      shift
+      ;;
+    -l | --len_deviation)
+      shift
+      BPDEV=$1
       shift
       ;;
     -p | --prefix)
@@ -397,26 +404,48 @@ for subf in $(ls ${INPUT_FOLDER}); do
     cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
     Rscript 00-Scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv &>> 01-Logs/log_${subf}.txt
   fi
-done
 
-# Merge Kallisto output
-cat 60-Kallisto/*/abundance.tsv > 60-Kallisto/kallisto_output.tsv
+  # Merge Kallisto output
+  # cat 60-Kallisto/*/abundance.tsv > 60-Kallisto/kallisto_output.tsv
 
-# --------------- #
-# II. Copy Number #
-# --------------- #
+  # --------------- #
+  # II. Copy Number #
+  # --------------- #
 
-# Header
-printf "Strain\tAll_reads\tAll_bases\t16S_reads\t16S_bases\tCopy_number\n" > copy_number.tsv
+  printf "Copy number\n"
 
-# Loop
-for subf in $(ls ${INPUT_FOLDER}); do
+  # Log
+  printf "\n\n### Target Copy Number ###\n\n" >> 01-Logs/log_${subf}.txt
+
+  # Header
+  printf "Strain\tAll_reads\tAll_bases\t16S_reads\t16S_bases\tCopy_number\n" > 60-Kallisto/${subf}/copy_number.tsv
+
   # Variables
+  # Get length of assembly
   lgen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  # Get number of bases in assembly reads
   braw=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
-  # Get longest recovered contig of target
-  l16S=$(cat 20-Alignment/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-  b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+
+  if [ $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) > 1 ]
+  then
+    # Get length target (16S) - Select sequences ± BPDEV from target
+    tl=$(grep -v "^>" target.fna | wc -c)
+    max_tl=$((tl+${BPDEV}))
+    min_tl=$((tl-${BPDEV}))
+    # Filter sequences within length range (array)
+    ids=($(grep "^>" 20-Alignment/${subf}/${subf}.fasta | awk -F "_" -v min_tl="$min_tl" '($4 > min_tl)' | awk -F "_" -v max_tl="$max_tl" '($4 < max_tl)' | sed 's/>//g'))
+
+    # Get length of longest recovered target
+    l16S=$(for i in ${ids[*]}; do echo $i | cut -d "_" -f 4; done | awk -v max=0 'NR == FNR {if($1 > max) {max = $1}} END {print max}')
+    # Number of bases in selected reads
+    b16S=$(samtools view 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v var="${ids[*]}" 'BEGIN{split(var, arr); for (i in arr) names[arr[i]]} $3 in names' | cut -f 10 | tr -d "\n" | wc -c)
+
+  else
+    # Get length of unique recovered target
+    l16S=$(cat 20-Alignment/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+    # Get number of bases of unique recovered target
+    b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  fi
 
   # Compute ratio (round <1 to 1)
   cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
@@ -427,15 +456,26 @@ for subf in $(ls ${INPUT_FOLDER}); do
   fi
 
   # File
-  printf "${subf}\t${lgen}\t${braw}\t${l16S}\t${b16S}\t${cnum}\n" >> copy_number.tsv
+  printf "${subf}\t${lgen}\t${braw}\t${l16S}\t${b16S}\t${cnum}\n" >> 60-Kallisto/${subf}/copy_number.tsv
+
+
+  # ---------------- #
+  # III. Integration #
+  # ---------------- #
+
+
+  Rscript 00-Scripts/Integration/
+
 done
-
-# ---------------- #
-# III. Integration #
-# ---------------- #
-
-#
 
 # ---------------- #
 # IV. Fingerprints #
 # ---------------- #
+
+# Separate fasta into multiples fasta
+# seqkit split ...
+
+# Rename haplotypes files
+#
+
+
