@@ -463,8 +463,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # III. Integration #
   # ---------------- #
 
-
-  Rscript 00-Scripts/Integration/
+  Rscript 00-Scripts/Integration.R -r 60-Kallisto/${subf}/abundance.tsv -c 60-Kallisto/${subf}/copy_number.tsv -i ${subf}
 
 done
 
