@@ -494,6 +494,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   done
 
   # Concatenate haplotypes
-  cat 80-Fingerprints/${subf}/* | tail -n +2 | sed -e 's/[0-9]//g' | sed 's/>seq_h/NNNNNNNNNN/g' | tr -d "\n" > 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+  printf ">${subf}_all_haplotypes\n" > 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+  cat 80-Fingerprints/${subf}/* | tail -n +2 | sed -e 's/[0-9]//g' | sed 's/>seq_h/NNNNNNNNNN/g' | tr -d "\n" >> 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
 
 done
