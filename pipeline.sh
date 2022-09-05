@@ -447,7 +447,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
   fi
 
-   Compute ratio (round <1 to 1)
+  # Compute ratio (round <1 to 1)
   cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
   if (( $(echo "${cnum} < 0.5" | bc -l) )); then
     cnum="1"
