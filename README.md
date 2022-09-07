@@ -11,7 +11,7 @@ The pipeline depends on:
 - [Samtools](http://www.htslib.org/)
 - [GATK](https://github.com/broadinstitute/gatk)
 - [BCFtools](https://samtools.github.io/bcftools/)
-- [Whatshap]()
+- [Whatshap](https://whatshap.readthedocs.io/en/latest/)
 - [SeqKit](https://bioinf.shenwei.me/seqkit/)
 - [Kallisto](https://pachterlab.github.io/kallisto/about)
 - [R](https://www.r-project.org/)
