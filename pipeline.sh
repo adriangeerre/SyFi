@@ -195,11 +195,9 @@ function markDuplicates() {
   # Execution
   gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/mapped_filtered/${sample}.filtered.bam -M ${output_dir}/mapped_filtered/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}/mapped_filtered
 
-  # Index BAM
-  # samtools index -@ ${threads} -b ${filtered_bam}
-
   # Plot BAM
-  samtools stats -d ${bam_file} > ${output_fn}
+  printf -v pyexec "import pysam; fh = open('%s', 'w'); fh.close(); pysam.stats('-d', '%s', save_stdout='%s')" "${output_fn}" "${bam_file}" "${output_fn}"
+  python -c "${pyexec}"
   plot-bamstats -p ${output_dir}/mapped_filtered/ ${output_fn}
 }
 
@@ -227,13 +225,13 @@ function haplotypeCaller() {
   
   bam="${output_dir}/genotyped/${sample}.filtered.readgroup.bam"
   bai="${output_dir}/genotyped/${sample}.filtered.readgroup.bai"
-  printf -v pyexec "import pysam; pysam.index(\'%s\', \'%s\', \'-@\', \'%s\')" "${bam}" "${bai}" "${THREADS}}"
+  printf -v pyexec "import pysam; pysam.index('%s', '%s', '-@', '%s')" "${bam}" "${bai}" "${THREADS}}"
   python -c "${pyexec}"
 
   # Index fasta
   fas="${reference_fasta}"
   fai="${reference_fasta}.fai"
-  printf -v pyexec "import pysam; pysam.faidx(\'%s\', \'-o\', \'%s\')" "${fas}" "${fai}"
+  printf -v pyexec "import pysam; pysam.faidx('%s', '-o', '%s')" "${fas}" "${fai}"
   python -c "${pyexec}"
 
   # Execution (ERROR HERE!!)
@@ -434,7 +432,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # Get length of longest recovered target
     l16S=$(for i in ${ids[*]}; do echo $i | cut -d "_" -f 4; done | awk -v max=0 'NR == FNR {if($1 > max) {max = $1}} END {print max}')
     # Number of bases in selected reads
-    b16S=$(samtools view 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v var="${ids[*]}" 'BEGIN{split(var, arr); for (i in arr) names[arr[i]]} $3 in names' | cut -f 10 | tr -d "\n" | wc -c)
+    bam="20-Alignment/${subf}/${subf}.rebuild.sort.bam"
+    printf -v pyexec "import pysam; pysam.view('%s', catch_stdout=False)" "${bam}"
+    b16S=$(python -c ${pyexec} | awk -v var="${ids[*]}" 'BEGIN{split(var, arr); for (i in arr) names[arr[i]]} $3 in names' | cut -f 10 | tr -d "\n" | wc -c)
 
   else
     # Get length of unique recovered target
