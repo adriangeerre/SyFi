@@ -224,10 +224,17 @@ function haplotypeCaller() {
 
   # Add read group to BAM
   gatk AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
-  samtools index -b ${output_dir}/genotyped/${sample}.filtered.readgroup.bam ${output_dir}/genotyped/${sample}.filtered.readgroup.bai -@ ${threads}
+  
+  bam="${output_dir}/genotyped/${sample}.filtered.readgroup.bam"
+  bai="${output_dir}/genotyped/${sample}.filtered.readgroup.bai"
+  printf -v pyexec "import pysam; pysam.index(\'%s\', \'%s\', \'-@\', \'%s\')" "${bam}" "${bai}" "${THREADS}}"
+  python -c "${pyexec}"
 
   # Index fasta
-  samtools faidx ${reference_fasta} -o ${reference_fasta}.fai
+  fas="${reference_fasta}"
+  fai="${reference_fasta}.fai"
+  printf -v pyexec "import pysam; pysam.faidx(\'%s\', \'-o\', \'%s\')" "${fas}" "${fai}"
+  python -c "${pyexec}"
 
   # Execution (ERROR HERE!!)
   gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
@@ -305,19 +312,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
   bwa-mem2 index 11-Sequences/${subf}/${subf}.fasta &>> 01-Logs/log_${subf}.txt
   bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.sam
 
-  # Sam to BAM
-  samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
-  # Sort BAM (Coordinate) for Variant Call
-  samtools sort -o 20-Alignment/${subf}/${subf}.sort.bam -O bam 20-Alignment/${subf}/${subf}.bam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt
-  # Obtain BAM of mapped reads (properly pair)
-  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.bam 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.mapped.bam
-
   printf "Reads recovery; "
 
-  # Obtain Fastq's
-  printf "\n\n### Reads recovery ###\n\n" >> 01-Logs/log_${subf}.txt
-  samtools collate 20-Alignment/${subf}/${subf}.mapped.bam 20-Alignment/${subf}/${subf}.collate 2>> 01-Logs/log_${subf}.txt
-  samtools fastq -1 20-Alignment/${subf}/${subf}_R1.fastq -2 20-Alignment/${subf}/${subf}_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam 2>> 01-Logs/log_${subf}.txt
+  python 00-Scripts/run_pysam.py -s 20-Alignment/${subf}/${subf}.sam -e true -t ${THREADS} 2>> 01-Logs/log_${subf}.txt 
+
   # Clean folder
   rm 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.bam
   gzip -f 20-Alignment/${subf}/${subf}_*.fastq
