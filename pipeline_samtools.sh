@@ -195,9 +195,11 @@ function markDuplicates() {
   # Execution
   gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/mapped_filtered/${sample}.filtered.bam -M ${output_dir}/mapped_filtered/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}/mapped_filtered
 
+  # Index BAM
+  # samtools index -@ ${threads} -b ${filtered_bam}
+
   # Plot BAM
-  printf -v pyexec "import pysam; fh = open('%s', 'w'); fh.close(); pysam.stats('-d', '%s', save_stdout='%s')" "${output_fn}" "${bam_file}" "${output_fn}"
-  python -c "${pyexec}"
+  samtools stats -d ${bam_file} > ${output_fn}
   plot-bamstats -p ${output_dir}/mapped_filtered/ ${output_fn}
 }
 
@@ -222,16 +224,10 @@ function haplotypeCaller() {
 
   # Add read group to BAM
   gatk AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
-  
-  bam="${output_dir}/genotyped/${sample}.filtered.readgroup.bam"
-  bai="${output_dir}/genotyped/${sample}.filtered.readgroup.bai"
-  printf -v pyexec "import pysam; pysam.index('%s', '%s', '-@', '%s')" "${bam}" "${bai}" "${THREADS}}"
-  python -c "${pyexec}"
+  samtools index -b ${output_dir}/genotyped/${sample}.filtered.readgroup.bam ${output_dir}/genotyped/${sample}.filtered.readgroup.bai -@ ${threads}
 
   # Index fasta
-  fai="${reference_fasta}.fai"
-  printf -v pyexec "import pysam; pysam.faidx('%s', '-o', '%s')" "${reference_fasta}" "${fai}"
-  python -c "${pyexec}"
+  samtools faidx ${reference_fasta} -o ${reference_fasta}.fai
 
   # Execution (ERROR HERE!!)
   gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
@@ -309,10 +305,19 @@ for subf in $(ls ${INPUT_FOLDER}); do
   bwa-mem2 index 11-Sequences/${subf}/${subf}.fasta &>> 01-Logs/log_${subf}.txt
   bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.sam
 
+  # Sam to BAM
+  samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
+  # Sort BAM (Coordinate) for Variant Call
+  samtools sort -o 20-Alignment/${subf}/${subf}.sort.bam -O bam 20-Alignment/${subf}/${subf}.bam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt
+  # Obtain BAM of mapped reads (properly pair)
+  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.bam 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.mapped.bam
+
   printf "Reads recovery; "
 
-  python 00-Scripts/run_pysam.py -s 20-Alignment/${subf}/${subf}.sam -e true -t ${THREADS} >> 01-Logs/log_${subf}.txt 
-
+  # Obtain Fastq's
+  printf "\n\n### Reads recovery ###\n\n" >> 01-Logs/log_${subf}.txt
+  samtools collate 20-Alignment/${subf}/${subf}.mapped.bam 20-Alignment/${subf}/${subf}.collate 2>> 01-Logs/log_${subf}.txt
+  samtools fastq -1 20-Alignment/${subf}/${subf}_R1.fastq -2 20-Alignment/${subf}/${subf}_R2.fastq -s 20-Alignment/${subf}/${subf}_leftover.fastq 20-Alignment/${subf}/${subf}.collate.bam 2>> 01-Logs/log_${subf}.txt
   # Clean folder
   rm 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.bam
   gzip -f 20-Alignment/${subf}/${subf}_*.fastq
@@ -333,7 +338,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   bwa-mem2 index 20-Alignment/${subf}/${subf}.fasta &>> 01-Logs/log_${subf}.txt
   bwa-mem2 mem 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}_R1.fastq.gz 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.rebuild.sam
 	
-  python 00-Scripts/run_pysam.py -s 20-Alignment/${subf}/${subf}.rebuild.sam -e false -t ${THREADS} >> 01-Logs/log_${subf}.txt 
+  samtools view -b 20-Alignment/${subf}/${subf}.rebuild.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.rebuild.bam
+  samtools sort -o 20-Alignment/${subf}/${subf}.rebuild.sort.bam -O bam 20-Alignment/${subf}/${subf}.rebuild.bam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt
+  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.rebuild.bam 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.rebuild.mapped.bam 
 
   ## -------------------------------------------
   ## Variant Calling & Phasing (GATK & BCFTools)
@@ -431,9 +438,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # Get length of longest recovered target
     l16S=$(for i in ${ids[*]}; do echo $i | cut -d "_" -f 4; done | awk -v max=0 'NR == FNR {if($1 > max) {max = $1}} END {print max}')
     # Number of bases in selected reads
-    bam="20-Alignment/${subf}/${subf}.rebuild.sort.bam"
-    printf -v pyexec "import pysam; pysam.view('%s', catch_stdout=False)" "${bam}"
-    b16S=$(python -c "${pyexec}" | awk -v var="${ids[*]}" 'BEGIN{split(var, arr); for (i in arr) names[arr[i]]} $3 in names' | cut -f 10 | tr -d "\n" | wc -c)
+    b16S=$(samtools view 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v var="${ids[*]}" 'BEGIN{split(var, arr); for (i in arr) names[arr[i]]} $3 in names' | cut -f 10 | tr -d "\n" | wc -c)
 
   else
     # Get length of unique recovered target
@@ -458,7 +463,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # III. Integration #
   # ---------------- #
 
-  printf "Integration; "
+  printf "Integration; \n"
   # Create folder
   printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
   mkdir -p 70-Integration/${subf}

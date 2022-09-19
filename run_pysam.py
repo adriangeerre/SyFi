@@ -31,12 +31,12 @@ def after_alingment(sam, name, threads, extract):
     pysam.sort("-o", name + ".sort.bam", "-O", "bam", name + ".bam", "-@" , threads)
 
     # Obtain BAM of mapped reads (properly pair)
-    pysam.view("-b", "-q", "30", "-f", "0x2", "-@", threads, "-o", name + ".mapped.bam", name + ".sort.bam", catch_stdout=False)
+    pysam.view("-b", "-q", "30", "-f", "0x2", "-@", threads, "-o", name + ".mapped.bam", name + ".bam", catch_stdout=False)
 
     # Obtain Fastq's
     if extract:
         print("\n\n### Reads recovery ###\n\n")
-        pysam.collate(name + ".sort.bam", name + ".collate")
+        pysam.collate(name + ".mapped.bam", name + ".collate")
         pysam.fastq("-1", name + "_R1.fastq", "-2", name + "_R2.fastq", "-s", name + "_leftover.fastq", name + ".collate.bam")
 
 
