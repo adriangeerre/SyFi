@@ -12,7 +12,7 @@
 
 function usage()
 {
-    echo "Usage: $0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -p <PREFIX> -t <THREADS>"
+    echo "Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -p <PREFIX> -t <THREADS>"
     printf "\n"
     echo "  -i  | --input_folder    Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure> (REQUIRED)."
     echo "  -s  | --search_target   Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
@@ -291,6 +291,8 @@ for subf in $(ls ${INPUT_FOLDER}); do
   blastn -query ${INPUT_FOLDER}/${subf}/*.fasta -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
   printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 
+  # CHECK IF TARGET WAS FOUND!! Perhaps, remove small hits!
+
   ## --------------------------------------------------
   ## Recover pair-end reads for target (BWA & Samtools)
   ## --------------------------------------------------
@@ -365,6 +367,8 @@ for subf in $(ls ${INPUT_FOLDER}); do
   printf "\n\n### Phasing ###\n\n" >> 01-Logs/log_${subf}.txt
   bash 00-Scripts/genome_phase_MOD.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment -o 40-Phasing/${subf} &>> 01-Logs/log_${subf}.txt
 
+  # INCLUDE HERE HAPLOTYPE LENGTH CLEAN!!!
+
   # Concatenate haplotypes and rename headers
   mkdir -p 50-Haplotypes/${subf}
   hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
@@ -398,7 +402,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # Kallisto
     printf "\n\n### Kallisto ###\n\n" >> 01-Logs/log_${subf}.txt
     kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta &>> 01-Logs/log_${subf}.txt
-    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} 00-Data/${subf}/${subf}_R1.fastq.gz 00-Data/${subf}/${subf}_R2.fastq.gz -t ${THREADS} &>> 01-Logs/log_${subf}.txt
+    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} &>> 01-Logs/log_${subf}.txt
 
     # Filter haplotypes
     cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
@@ -418,18 +422,18 @@ for subf in $(ls ${INPUT_FOLDER}); do
   printf "\n\n### Target Copy Number ###\n\n" >> 01-Logs/log_${subf}.txt
 
   # Header
-  printf "Strain\tAll_reads\tAll_bases\t16S_reads\t16S_bases\tCopy_number\n" > 60-Kallisto/${subf}/copy_number.tsv
+  printf "Strain\tGenome_length\tGenome_nbases\tTarget_length\tTarget_nbases\tCopy_number\n" > 60-Kallisto/${subf}/copy_number.tsv
 
   # Variables
   # Get length of assembly
-  lgen=$(cat 00-Data/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  lgen=$(cat ${INPUT_FOLDER}/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
   # Get number of bases in assembly reads
-  braw=$(zcat 00-Data/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
   if [ $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) -gt 1 ]
   then
     # Get length target (16S) - Select sequences ± BPDEV from target
-    tl=$(grep -v "^>" target.fna | wc -c)
+    tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
     max_tl=$((tl+${BPDEV}))
     min_tl=$((tl-${BPDEV}))
     # Filter sequences within length range (array)
@@ -494,7 +498,21 @@ for subf in $(ls ${INPUT_FOLDER}); do
   done
 
   # Concatenate haplotypes
-  printf ">${subf}_all_haplotypes\n" > 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
-  cat 80-Fingerprints/${subf}/seq_h* | tail -n +2 | sed -e 's/[0-9]//g' | sed 's/>seq_h/NNNNNNNNNN/g' | tr -d "\n" >> 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+  printf ">${subf}_all_haplotypes\n" > 80-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+  cat 70-Integration/${subf}/integration.tsv | awk '{print $1 "/" $(NF)}' | tail -n +2 > 70-Integration/${subf}/tmp.tsv
+  for h in $(cat 70-Integration/${subf}/tmp.tsv); do
+    seq=$(echo ${h} | cut -d "/" -f 1)
+    num=$(echo ${h} | cut -d "/" -f 2)
+    for n in $(seq ${num}); do
+      if [[ ${n} == ${num} && ${n} != 1 ]]; then
+        grep -v "^>" 80-Fingerprints/${subf}/${seq}.fasta >> 80-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+      else
+        grep -v "^>" 80-Fingerprints/${subf}/${seq}.fasta >> 80-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+        echo "NNNNNNNNNN" >> 80-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+      fi
+    done 
+  done
+  cat 80-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta | tr -d "\n" > 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+  rm 70-Integration/${subf}/tmp.tsv
 
 done

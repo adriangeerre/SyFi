@@ -101,3 +101,9 @@ wget ...
 tar -xvzf latest_release.tar.gz
 
 ```
+
+### Usage
+
+```
+./pipeline.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -p <PREFIX> -t <THREADS>
+```
