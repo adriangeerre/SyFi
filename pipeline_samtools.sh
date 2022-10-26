@@ -21,9 +21,10 @@ function usage()
     echo "  -t  | --threads          Number of threads (default: 1)."
     echo "  -mn | --min_memory       Minimum memory required (default: 4GB)."
     echo "  -mx | --max_memory       Maximum memory required (default: 8GB)."
+    echo "  -f | --force             Force re-computation of computed samples (default: False)."
     echo "  -h  | --help             Display help."
     echo "  -c  | --citation         Display citation."
-    echo "  -f  | --folder_structure Display required folder structure."
+    echo "  --folder_structure       Display required folder structure."
     printf "\n"
 }
 
@@ -60,6 +61,7 @@ THREADS=1
 MIN_MEM=4
 MAX_MEM=8
 BPDEV=100
+FORCE=0
 
 # display usage if 
 if [[ $# -lt 4  && $1 != "-h" && $1 != "--help" && $1 != "-c" && $1 != "--citation" && $1 != "--folder_structure" ]]; then
@@ -104,6 +106,11 @@ while [[ "$1" > 0 ]]; do
     -mx | --max_mem)
       shift
       MAX_MEM=$1
+      shift
+      ;;
+    -f | --force)
+      shift
+      FORCE=1
       shift
       ;;
     -h | --help)
@@ -282,7 +289,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   ## Avoid re-computation
   ## --------------------
 
-  if [ -f 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta ]; then
+  if [[ -f 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 0 ]]; then
     continue
   fi
 
@@ -300,7 +307,11 @@ for subf in $(ls ${INPUT_FOLDER}); do
   blastn -query ${INPUT_FOLDER}/${subf}/*.fasta -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
   printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 
-  # CHECK IF TARGET WAS FOUND!! Perhaps, remove small hits!
+  # CHECK: Absent target match (Perhaps, remove small hits!)
+  if [ $(cat 11-Sequences/${subf}/${subf}.fasta | wc -l) -lt 1 ]; then
+    printf "\nWARNING: No target was found for ${subf}. Computation will be skipped.\n"
+    continue
+  fi
 
   ## --------------------------------------------------
   ## Recover pair-end reads for target (BWA & Samtools)
@@ -337,6 +348,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   ## Rebuild target from reads (SPAdes, BWA & Samtools)
   ## --------------------------------------------------
 
+  # CHECK: Absent R1/R2 for de novo assembly
+  if [[ ! -f 20-Alignment/${subf}/${subf}_R1.fastq.gz || ! -f 20-Alignment/${subf}/${subf}_R2.fastq.gz ]]; then
+    printf "\nWARNING: No target reads were recovered for ${subf}. Computation will be skipped.\n"
+    continue
+  fi
+
   printf "Contig re-build; "
 
   # SPAdes (Unambigous nucleotides assembly)
@@ -357,6 +374,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   ## Variant Calling & Phasing (GATK & BCFTools)
   ## -------------------------------------------
 
+  # CHECK: Absent rebuilt BAM
+  if [[ ! -f 20-Alignment/${subf}/${subf}.rebuild.sort.bam || ! -f 20-Alignment/${subf}/${subf}.fasta ]]; then
+    printf "\nWARNING: No target reads were recovered for ${subf}. Computation will be skipped.\n"
+    continue
+  fi
+
   # Create folders
   mkdir -p 30-VariantCalling/${subf}
   mkdir -p 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/reference 30-VariantCalling/${subf}/variants
@@ -367,6 +390,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   printf "\n\n### Variant calling ###\n\n" >> 01-Logs/log_${subf}.txt
   variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM} &>> 01-Logs/log_${subf}.txt
 
+  # CHECK: Absent variants
+  if [ ! -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz ]; then
+    printf "\nWARNING: No variants were recovered for ${subf}. Computation will be skipped.\n"
+    continue
+  fi
+
   # Create folder
   mkdir -p 40-Phasing/${subf}
 
@@ -375,6 +404,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Phasing
   printf "\n\n### Phasing ###\n\n" >> 01-Logs/log_${subf}.txt
   bash 00-Scripts/genome_phase_MOD.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment -o 40-Phasing/${subf} &>> 01-Logs/log_${subf}.txt
+
+  # CHECK: Absent haplotypes
+  if [[ ! -f 40-Phasing/${subf}/${subf}_assembly_h1.fasta || ! -f 40-Phasing/${subf}/${subf}_assembly_h2.fasta ]]; then
+    printf "\nWARNING: No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
+    continue
+  fi
 
   # INCLUDE HERE HAPLOTYPE LENGTH CLEAN!!!
 
@@ -399,6 +434,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   ## ------------------------------------
   ## Haplotype abundance ratio (Kallisto)
   ## ------------------------------------
+
+  # CHECK: Absent clean haplotypes
+  if [ ! -f 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta ]; then
+    printf "\nWARNING: No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
+    continue
+  fi
 
   # Kallisto (Only applied to strains with more that one haplotype)
   if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "1" ]
@@ -471,10 +512,15 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # File
   printf "${subf}\t${lgen}\t${braw}\t${l16S}\t${b16S}\t${cnum}\n" >> 60-Kallisto/${subf}/copy_number.tsv
 
-
   # ---------------- #
   # III. Integration #
   # ---------------- #
+
+  # CHECK: Absent kallisto output
+  if [ ! -f 60-Kallisto/${subf}/abundance.tsv ]; then
+    printf "\nWARNING: Missing kallisto output for ${subf}. Computation will be skipped.\n"
+    continue
+  fi
 
   printf "Integration; "
   # Create folder
@@ -488,6 +534,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # IV. Fingerprints #
   # ---------------- #
 
+  # CHECK: Absent integration output
+  if [ ! -f 70-Integration/${subf}/integration.tsv ]; then
+    printf "\nWARNING: Missing integration output for ${subf}. Computation will be skipped.\n"
+    continue
+  fi
+
   printf "Fingerprint\n"
   printf "\n\n### Fingerprint ###\n\n" >> 01-Logs/log_${subf}.txt
 
@@ -498,7 +550,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   for i in $(ls -d 80-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/clean_${subf}_haplotypes.part_//g"); done &>> 01-Logs/log_${subf}.txt
 
   # Keep haplotypes filtered in integration
-  keep=($(tail -n +2 70-Integration/01L31/integration.tsv | cut -f 1))
+  keep=($(tail -n +2 70-Integration/${subf}/integration.tsv | cut -f 1))
   for i in $(ls 80-Fingerprints/${subf} | sed 's/.fasta//g'); do
     if [[ ! "${keep[*]}" =~ "${i}" ]]
     then
