@@ -14,15 +14,16 @@ function usage()
 {
     echo "Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -p <PREFIX> -t <THREADS>"
     printf "\n"
-    echo "  -i  | --input_folder    Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure> (REQUIRED)."
-    echo "  -s  | --search_target   Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
-    echo "  -d  | --len_deviation   Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)"
-    echo "  -p  | --prefix          Prefix for output files (default: project)."
-    echo "  -t  | --threads         Number of threads (default: 1)."
-    echo "  -mn | --min_memory      Minimum memory required (default: 4GB)."
-    echo "  -mx | --max_memory      Maximum memory required (default: 8GB)."
-    echo "  -h  | --help            Display help."
-    echo "  -c  | --citation        Display citation."
+    echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure> (REQUIRED)."
+    echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
+    echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)"
+    echo "  -p  | --prefix           Prefix for output files (default: project)."
+    echo "  -t  | --threads          Number of threads (default: 1)."
+    echo "  -mn | --min_memory       Minimum memory required (default: 4GB)."
+    echo "  -mx | --max_memory       Maximum memory required (default: 8GB)."
+    echo "  -h  | --help             Display help."
+    echo "  -c  | --citation         Display citation."
+    echo "  -f  | --folder_structure Display required folder structure."
     printf "\n"
 }
 
@@ -36,11 +37,11 @@ function folder_structure()
           └── sub-folder_1
               ├── strain_1_R1.fastq.gz
               ├── strain_1_R2.fastq.gz
-              └── strain_1_genome.fasta
+              └── strain_1.fasta
           └── sub-folder_2
               ├── strain_2_R1.fastq.gz
               ├── strain_2_R2.fastq.gz
-              └── strain_2_genome.fasta"
+              └── strain_2.fasta"
   printf "\n"
 }
 
@@ -226,8 +227,8 @@ function haplotypeCaller() {
   gatk AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
   samtools index -b ${output_dir}/genotyped/${sample}.filtered.readgroup.bam ${output_dir}/genotyped/${sample}.filtered.readgroup.bai -@ ${threads}
 
-  # Index fasta
-  samtools faidx ${reference_fasta} -o ${reference_fasta}.fai
+  # Index fasta (without -o for samtools version 1.7 or below)
+  samtools faidx ${reference_fasta} #-o ${reference_fasta}.fai
 
   # Execution (ERROR HERE!!)
   gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
@@ -276,6 +277,14 @@ function jointGenotype() {
 #-------------- #
 
 for subf in $(ls ${INPUT_FOLDER}); do
+
+  ## --------------------
+  ## Avoid re-computation
+  ## --------------------
+
+  if [ -f 80-Fingerprints/${subf}/${subf}_all_haplotypes.fasta ]; then
+    continue
+  fi
 
   printf "\nSample: $subf\n"
 
@@ -467,7 +476,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # III. Integration #
   # ---------------- #
 
-  printf "Integration; \n"
+  printf "Integration; "
   # Create folder
   printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
   mkdir -p 70-Integration/${subf}
