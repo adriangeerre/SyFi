@@ -53,4 +53,4 @@ while (unique(abun$proportion < 0.5) | nrow(abun) == 0) {
 
 # Save
 # ----
-write.table(abun, file=paste("70-Integration/", opt$i, "/integration.tsv", sep=""), quote=F, col.names=T, row.names=F, sep="\t")
+write.table(abun, file=paste("60-Kallisto/", opt$i, "/integration.tsv", sep=""), quote=F, col.names=T, row.names=F, sep="\t")

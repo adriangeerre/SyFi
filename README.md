@@ -107,3 +107,8 @@ tar -xvzf latest_release.tar.gz
 ```
 ./pipeline.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -p <PREFIX> -t <THREADS>
 ```
+
+### Tips and tricks
+
+The option "-f" should always placed last!
+Low quality genomes could be skipped because of: missing or incomplete targets.
