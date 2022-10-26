@@ -18,6 +18,8 @@ library(optparse)
 option_list = list(
   make_option(c("-i", "--input"), action="store", default=NA, type='character',
               help="Input path with kallisto output file."),
+  make_option(c("-c", "--cutoff"), action="store", default=NA, type='character',
+              help="Cutoff to define deviation between ratios."),
   )
 opt = parse_args(OptionParser(option_list=option_list))
 
@@ -27,7 +29,7 @@ df <- read.delim(opt$i, header=T)
 
 # Transform
 # --------
-cutoff = 25
+cutoff = opt$c
 
 while(TRUE) {
   minimum <- min(df$est_counts)
