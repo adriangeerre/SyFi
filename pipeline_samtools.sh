@@ -14,16 +14,28 @@ function usage()
 {
     echo "Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>"
     printf "\n"
-    echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure> (REQUIRED)."
-    echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
+    echo "# Required:"
+    echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>."
+    echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S."
+    printf "\n"
+    echo "# Haplotype deviation:"
     echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
+    printf "\n"
+    echo "# Input extension:"
     echo "  --fasta-extension        Reference file extension (default: fasta)."
     echo "  --fastq-extension        Illumina reads file extension (default: fastq.gz)."
+    printf "\n"
+    echo "# Computation:"
     echo "  -t  | --threads          Number of threads (default: 1)."
     echo "  -mn | --min_memory       Minimum memory required (default: 4GB)."
     echo "  -mx | --max_memory       Maximum memory required (default: 8GB)."
+    printf "\n"
+    echo "# Output options:"
     echo "  -k  | --keep_files       Keep temporary files [0: none, 1: BAM's, or 2: All] (default: 0)."
+    echo "  -v  | --verbose          Verbose mode [0: none, 1: Steps, or 2: All] (default: 0)."
     echo "  -f  | --force            Force re-computation of computed samples (default: False)."
+    printf "\n"
+    echo "# Display:"
     echo "  -h  | --help             Display help."
     echo "  -c  | --citation         Display citation."
     echo "  --folder_structure       Display required folder structure."
@@ -165,12 +177,6 @@ if [[ ! -d ${INPUT_FOLDER} ]]; then
   exit
 fi
 
-# Fasta input
-if [[ ! -e ${INPUT_FOLDER}/${subf}/${subf}.${EXTENSION} ]]; then
-  echo "ERROR: File ${INPUT_FOLDER}/${subf}/${subf}.${EXTENSION} missing, please use the \"-e/--extension\" argument if the extension is not \"fasta\"."
-  exit
-fi
-
 # Keep file
 if [[ ! "$KEEPF" =~ ^[0-9]+$ || ${KEEPF} -gt 2 || ${KEEPF} -lt 0 ]]; then
   echo "ERROR: Keep temporary files should be a number between 0 and 2 [0: none, 1: BAM's, or 2: All]."
@@ -301,6 +307,120 @@ function jointGenotype() {
   plot-vcfstats -p ${plot_dir} -s ${comp_fn} # (ERROR HERE!)
 }
 
+# FUNCTION: Copy Number
+function copyNumber() {
+  # Arguments
+  INPUT_FOLDER=$1
+  subf=$2
+  SEARCH_TARGET=$3
+  BPDEV=$4
+
+  printf "Copy number; "
+
+  # Log
+  printf "\n\n### Target Copy Number ###\n\n" >> 01-Logs/log_${subf}.txt
+
+  # Header
+  printf "Strain\tGenome_length\tGenome_nbases\tTarget_length\tTarget_nbases\tCopy_number\n" > 60-Integration/${subf}/copy_number.tsv
+
+  # Variables
+  # Get length of assembly
+  lgen=$(cat ${INPUT_FOLDER}/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  # Get number of bases in assembly reads
+  braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+
+  if [ $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) -gt 1 ]
+  then
+    # Get length target (16S) - Select sequences ± BPDEV from target
+    tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
+    max_tl=$((tl+${BPDEV}))
+    min_tl=$((tl-${BPDEV}))
+    # Filter sequences within length range (array)
+    ids=($(grep "^>" 20-Alignment/${subf}/${subf}.fasta | awk -F "_" -v min_tl="$min_tl" '($4 > min_tl)' | awk -F "_" -v max_tl="$max_tl" '($4 < max_tl)' | sed 's/>//g'))
+
+    # Get length of longest recovered target
+    l16S=$(for i in ${ids[*]}; do echo $i | cut -d "_" -f 4; done | awk -v max=0 'NR == FNR {if($1 > max) {mals 5x = $1}} END {print max}')
+    # Number of bases in selected reads
+    b16S=$(samtools view 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v var="${ids[*]}" 'BEGIN{split(var, arr); for (i in arr) names[arr[i]]} $3 in names' | cut -f 10 | tr -d "\n" | wc -c)
+
+  else
+    # Get length of unique recovered target
+    l16S=$(cat 20-Alignment/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+    # Get number of bases of unique recovered target
+    b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  fi
+
+  # Compute ratio (round <1 to 1)
+  cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
+  if (( $(echo "${cnum} < 0.5" | bc -l) )); then
+    cnum="1"
+  elif (( $(echo "${cnum} > 25.5" | bc -l) )); then
+    cnum="25"
+  fi
+
+  # File
+  printf "${subf}\t${lgen}\t${braw}\t${l16S}\t${b16S}\t${cnum}\n" >> 60-Integration/${subf}/copy_number.tsv
+}
+
+# FUNCTION: Fingerprint
+function fingerPrint() {
+  # Variables
+  mode=$1 # unique/multiple
+  subf=$2
+
+  # Create folder
+  mkdir -p 70-Fingerprints/${subf}
+
+  if [ $mode == "unique" ];then
+    # Log
+    printf "Fingerprint [unique]\n"
+    printf "\n\n### Fingerprint ###\n\n" >> 01-Logs/log_${subf}.txt
+
+    # Copy recovered target
+    cp 20-Alignment/${subf}/${subf}.fasta 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+
+    # Rename fasta header
+    cat 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta | sed "s/^>NODE.*/>${subf}_all_haplotypes/g" >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+
+  elif [ $mode == "multiple" ];then
+    # Log
+    printf "Fingerprint\n"
+    printf "\n\n### Fingerprint ###\n\n" >> 01-Logs/log_${subf}.txt
+
+    # Separate fasta into multiples fasta
+    seqkit split -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta -O 70-Fingerprints/${subf} &>> 01-Logs/log_${subf}.txt
+
+    # Rename haplotypes files
+    for i in $(ls -d 70-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/clean_${subf}_haplotypes.part_//g"); done &>> 01-Logs/log_${subf}.txt
+
+    # Keep haplotypes filtered in integration
+    keep=($(tail -n +2 60-Integration/${subf}/integration.tsv | cut -f 1))
+    for i in $(ls 70-Fingerprints/${subf} | sed 's/.fasta//g'); do
+      if [[ ! "${keep[*]}" =~ "${i}" ]]
+      then
+        rm -f 70-Fingerprints/${subf}/${i}.fasta
+      fi
+    done
+
+    # Concatenate haplotypes
+    cat 60-Integration/${subf}/integration.tsv | awk '{print $1 "/" $(NF)}' | tail -n +2 > 60-Integration/${subf}/tmp.tsv
+    for h in $(cat 60-Integration/${subf}/tmp.tsv); do
+      seq=$(echo ${h} | cut -d "/" -f 1)
+      num=$(echo ${h} | cut -d "/" -f 2)
+      for n in $(seq ${num}); do
+        if [[ ${n} == ${num} && ${n} != 1 ]]; then
+          grep -v "^>" 70-Fingerprints/${subf}/${seq}.fasta >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+        else
+          grep -v "^>" 70-Fingerprints/${subf}/${seq}.fasta >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+          echo "NNNNNNNNNN" >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+        fi
+      done 
+    done
+    printf ">${subf}_all_haplotypes\n" > 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+    cat 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta | tr -d "\n" >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+  fi
+}
+
 
 ### Execution
 
@@ -317,9 +437,22 @@ for subf in $(ls ${INPUT_FOLDER}); do
   elif [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 1 ]]; then
     rm 10-Blast/${subf}.tsv
     # Remove results for sample
-    for fld in 11-Sequences 20-Alignment 30-VariantCalling 40-Phasing 50-Haplotypes 60-Kallisto 70-Fingerprints; do
+    for fld in 11-Sequences 20-Alignment 30-VariantCalling 40-Phasing 50-Haplotypes 60-Integration 70-Fingerprints; do
       rm -r ${fld}/${subf}
     done
+  fi
+
+  ## CHECK: Input in folder
+  # Fasta input
+  if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} ]]; then
+    echo "ERROR: File ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} missing, please use the \"-e/--extension\" argument if the extension is not \"fasta\"."
+    exit
+  fi
+
+  # Fastq input
+  if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} || ! -f ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} ]]; then
+    echo "ERROR: One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\"."
+    exit
   fi
 
   printf "\nSample: $subf\n"
@@ -376,7 +509,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   ## --------------------------------------------------
 
   # CHECK: Absent R1/R2 for de novo assembly
-  if [[ ! -f 20-Alignment/${subf}/${subf}_R1.fastq.gz || ! -f 20-Alignment/${subf}/${subf}_R2.fastq.gz ]]; then
+  if [[ $(zcat 20-Alignment/${subf}/${subf}_R1.fastq.gz | wc -l) -eq 0 || $( zcat 20-Alignment/${subf}/${subf}_R2.fastq.gz | wc -l) -eq 0 ]]; then
     printf "\nWARNING: No target reads were recovered for ${subf}. Computation will be skipped.\n"
     continue
   fi
@@ -425,7 +558,8 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # CHECK: No variants recovered
   if [ $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) != 0 ]; then
- 
+    # MULTIPLE HAPLOTYPES
+
     # Create folder
     mkdir -p 40-Phasing/${subf}
 
@@ -441,11 +575,20 @@ for subf in $(ls ${INPUT_FOLDER}); do
       continue
     fi
 
-    # INCLUDE HERE HAPLOTYPE LENGTH CLEAN!!! (For small matches!)
-
     # Concatenate haplotypes and rename headers
     mkdir -p 50-Haplotypes/${subf}
     hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
+
+    # Haplotype length correction: remove short matches
+    #if [ $(grep "^>" 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | wc -l) -gt 1 ];then
+      # Get length target (16S) - Select sequences minus BPDEV from target
+      #tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
+      #min_tl=$((tl-${BPDEV}))
+      # Filter sequences within length range (array)
+      #ids=($(grep "^>" 50-Haplotypes/${subf}/${subf}_haplotypes.fasta))
+    #fi
+
+    
 
     for n in $(seq ${hnum})
     do
@@ -475,135 +618,91 @@ for subf in $(ls ${INPUT_FOLDER}); do
     if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "1" ]
     then
       # Create folder
-      mkdir -p 60-Kallisto
+      mkdir -p 60-Integration
 
       printf "Abundance ratio; "
 
       # Kallisto
       printf "\n\n### Kallisto ###\n\n" >> 01-Logs/log_${subf}.txt
       kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta &>> 01-Logs/log_${subf}.txt
-      kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} &>> 01-Logs/log_${subf}.txt
+      kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Integration/${subf} ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} &>> 01-Logs/log_${subf}.txt
 
       # Filter haplotypes
-      cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
-      Rscript 00-Scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv &>> 01-Logs/log_${subf}.txt
-    fi
-  fi
+      cp 60-Integration/${subf}/abundance.tsv 60-Integration/${subf}/abundance.orig.tsv
+      Rscript 00-Scripts/filterHaplotypes.R -i 60-Integration/${subf}/abundance.tsv &>> 01-Logs/log_${subf}.txt
 
-  # Merge Kallisto output
-  # cat 60-Kallisto/*/abundance.tsv > 60-Kallisto/kallisto_output.tsv
+      # --------------- #
+      # II. Copy Number #
+      # --------------- #
 
-  # --------------- #
-  # II. Copy Number #
-  # --------------- #
+      # Copy number
+      copyNumber ${INPUT_FOLDER} ${subf} ${SEARCH_TARGET} ${BPDEV}
 
-  printf "Copy number; "
+      # ---------------- #
+      # III. Integration #
+      # ---------------- #
 
-  # Log
-  printf "\n\n### Target Copy Number ###\n\n" >> 01-Logs/log_${subf}.txt
-
-  # Header
-  printf "Strain\tGenome_length\tGenome_nbases\tTarget_length\tTarget_nbases\tCopy_number\n" > 60-Kallisto/${subf}/copy_number.tsv
-
-  # Variables
-  # Get length of assembly
-  lgen=$(cat ${INPUT_FOLDER}/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-  # Get number of bases in assembly reads
-  braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
-
-  if [ $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) -gt 1 ]
-  then
-    # Get length target (16S) - Select sequences ± BPDEV from target
-    tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
-    max_tl=$((tl+${BPDEV}))
-    min_tl=$((tl-${BPDEV}))
-    # Filter sequences within length range (array)
-    ids=($(grep "^>" 20-Alignment/${subf}/${subf}.fasta | awk -F "_" -v min_tl="$min_tl" '($4 > min_tl)' | awk -F "_" -v max_tl="$max_tl" '($4 < max_tl)' | sed 's/>//g'))
-
-    # Get length of longest recovered target
-    l16S=$(for i in ${ids[*]}; do echo $i | cut -d "_" -f 4; done | awk -v max=0 'NR == FNR {if($1 > max) {max = $1}} END {print max}')
-    # Number of bases in selected reads
-    b16S=$(samtools view 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v var="${ids[*]}" 'BEGIN{split(var, arr); for (i in arr) names[arr[i]]} $3 in names' | cut -f 10 | tr -d "\n" | wc -c)
-
-  else
-    # Get length of unique recovered target
-    l16S=$(cat 20-Alignment/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-    # Get number of bases of unique recovered target
-    b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
-  fi
-
-  # Compute ratio (round <1 to 1)
-  cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
-  if (( $(echo "${cnum} < 0.5" | bc -l) )); then
-    cnum="1"
-  elif (( $(echo "${cnum} > 25.5" | bc -l) )); then
-    cnum="25"
-  fi
-
-  # File
-  printf "${subf}\t${lgen}\t${braw}\t${l16S}\t${b16S}\t${cnum}\n" >> 60-Kallisto/${subf}/copy_number.tsv
-
-  # ---------------- #
-  # III. Integration #
-  # ---------------- #
-
-  # CHECK: Absent kallisto output
-  if [ ! -f 60-Kallisto/${subf}/abundance.tsv ]; then
-    printf "\nWARNING: Missing kallisto output for ${subf}. Computation will be skipped.\n"
-    continue
-  fi
-
-  printf "Integration; "
-  # Create folder
-  printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
-
-  # Integrate step I and II
-  Rscript 00-Scripts/Integration.R -r 60-Kallisto/${subf}/abundance.tsv -c 60-Kallisto/${subf}/copy_number.tsv -i ${subf} &>> 01-Logs/log_${subf}.txt
-
-  # ---------------- #
-  # IV. Fingerprints #
-  # ---------------- #
-
-  # CHECK: Absent integration output
-  if [ ! -f 60-Kallisto/${subf}/integration.tsv ]; then
-    printf "\nWARNING: Missing integration output for ${subf}. Computation will be skipped.\n"
-    continue
-  fi
-
-  printf "Fingerprint\n"
-  printf "\n\n### Fingerprint ###\n\n" >> 01-Logs/log_${subf}.txt
-
-  # Separate fasta into multiples fasta
-  seqkit split -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta -O 70-Fingerprints/${subf} &>> 01-Logs/log_${subf}.txt
-
-  # Rename haplotypes files
-  for i in $(ls -d 70-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/clean_${subf}_haplotypes.part_//g"); done &>> 01-Logs/log_${subf}.txt
-
-  # Keep haplotypes filtered in integration
-  keep=($(tail -n +2 60-Kallisto/${subf}/integration.tsv | cut -f 1))
-  for i in $(ls 70-Fingerprints/${subf} | sed 's/.fasta//g'); do
-    if [[ ! "${keep[*]}" =~ "${i}" ]]
-    then
-      rm -f 70-Fingerprints/${subf}/${i}.fasta
-    fi
-  done
-
-  # Concatenate haplotypes
-  cat 60-Kallisto/${subf}/integration.tsv | awk '{print $1 "/" $(NF)}' | tail -n +2 > 60-Kallisto/${subf}/tmp.tsv
-  for h in $(cat 60-Kallisto/${subf}/tmp.tsv); do
-    seq=$(echo ${h} | cut -d "/" -f 1)
-    num=$(echo ${h} | cut -d "/" -f 2)
-    for n in $(seq ${num}); do
-      if [[ ${n} == ${num} && ${n} != 1 ]]; then
-        grep -v "^>" 70-Fingerprints/${subf}/${seq}.fasta >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
-      else
-        grep -v "^>" 70-Fingerprints/${subf}/${seq}.fasta >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
-        echo "NNNNNNNNNN" >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+      # CHECK: Absent kallisto output
+      if [ ! -f 60-Integration/${subf}/abundance.tsv ]; then
+        printf "\nWARNING: Missing kallisto output for ${subf}. Computation will be skipped.\n"
+        continue
       fi
-    done 
-  done
-  printf ">${subf}_all_haplotypes\n" > 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
-  cat 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta | tr -d "\n" >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta
+
+      printf "Integration; "
+      # Log
+      printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
+
+      # Integrate step I and II
+      Rscript 00-Scripts/Integration.R -r 60-Integration/${subf}/abundance.tsv -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m "multiple" &>> 01-Logs/log_${subf}.txt
+
+      # ---------------- #
+      # IV. Fingerprints #
+      # ---------------- #
+
+      # CHECK: Absent integration output
+      if [ ! -f 60-Integration/${subf}/integration.tsv ]; then
+        printf "\nWARNING: Missing integration output for ${subf}. Computation will be skipped.\n"
+        continue
+      fi
+
+      # Fingerprint
+      fingerPrint 'multiple' ${subf}
+    fi
+    
+  else
+    # ONE HAPLOTYPE
+
+    printf "Abundance ratio [Avoid]; "
+
+    # --------------- #
+    # II. Copy Number #
+    # --------------- #
+
+    # Copy number
+    copyNumber ${INPUT_FOLDER} ${subf} ${SEARCH_TARGET} ${BPDEV}
+
+    # ---------------- #
+    # III. Integration #
+    # ---------------- #
+
+    printf "Integration [unique]; "
+    # Log
+    printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
+
+    # Create folder
+    mkdir -p 60-Integration/${subf}
+
+    # Integrate only step II 
+    Rscript 00-Scripts/Integration.R -r "None" -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m 'unique' &>> 01-Logs/log_${subf}.txt
+
+    # ---------------- #
+    # IV. Fingerprints #
+    # ---------------- #
+
+    # Fingerprint
+    fingerPrint 'unique' ${subf}
+
+  fi
 
   # ----------------- #
   # ExI. Clean folder #
@@ -626,10 +725,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
     rm -rf 40-Phasing/${subf}/${subf}_reads.txt 
     # 50-Haplotypes
     rm 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx
-    # 60-Kallisto
-    rm -rf 60-Kallisto/${subf}/abundance.h5 60-Kallisto/${subf}/run_info.json 60-Kallisto/${subf}/tmp.tsv
+    # 60-Integration
+    rm -rf 60-Integration/${subf}/abundance.h5 60-Integration/${subf}/run_info.json 60-Integration/${subf}/tmp.tsv
     # 70-Fingerprints
-    rm 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+    rm -rf 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
   fi
 
 done
