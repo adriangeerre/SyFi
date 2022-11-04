@@ -110,5 +110,7 @@ tar -xvzf latest_release.tar.gz
 
 ### Tips and tricks
 
+**Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example by using Blast. This is because the reference/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations.
+
 The option "-f" should always placed last!
 Low quality genomes could be skipped because of: missing or incomplete targets.
