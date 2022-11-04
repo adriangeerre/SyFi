@@ -12,12 +12,12 @@
 
 function usage()
 {
-    echo "Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -p <PREFIX> -t <THREADS>"
+    echo "Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>"
     printf "\n"
     echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure> (REQUIRED)."
     echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
     echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
-    echo "  -p  | --prefix           Prefix for output files (default: project)."
+    echo "  -x  | --extension        Reference file extension (default: fasta)."
     echo "  -t  | --threads          Number of threads (default: 1)."
     echo "  -mn | --min_memory       Minimum memory required (default: 4GB)."
     echo "  -mx | --max_memory       Maximum memory required (default: 8GB)."
@@ -57,8 +57,8 @@ function citation()
 }
 
 # Default variables
-PREFIX='project'
 THREADS=1
+EXTENSION='fasta'
 MIN_MEM=4
 MAX_MEM=8
 BPDEV=100
@@ -90,9 +90,9 @@ while [[ "$1" > 0 ]]; do
       BPDEV=$1
       shift
       ;;
-    -p | --prefix)
+    -x | --extension)
       shift
-      PREFIX=$1
+      EXTENSION=$1
       shift
       ;;
     -t | --threads)
@@ -158,7 +158,13 @@ if [[ ! -d ${INPUT_FOLDER} ]]; then
   exit
 fi
 
-# Input folder
+# Fasta input
+if [[ ! -e ${INPUT_FOLDER}/${subf}/${subf}.${EXTENSION} ]]; then
+  echo "ERROR: File ${INPUT_FOLDER}/${subf}/${subf}.${EXTENSION} missing, please use the \"-e/--extension\" argument if the extension is not \"fasta\"."
+  exit
+fi
+
+# Keep file
 if [[ ! "$KEEPF" =~ ^[0-9]+$ || ${KEEPF} -gt 2 || ${KEEPF} -lt 0 ]]; then
   echo "ERROR: Keep temporary files should be a number between 0 and 2 [0: none, 1: BAM's, or 2: All]."
   exit
@@ -320,7 +326,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Create folder
   mkdir -p 10-Blast 11-Sequences/${subf} 01-Logs
   # Blastn
-  blastn -query ${INPUT_FOLDER}/${subf}/*.fasta -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
+  blastn -query ${INPUT_FOLDER}/${subf}/${subf}.${EXTENSION} -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
   printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 
   # CHECK: Absent target match (Perhaps, remove small hits!)
@@ -404,73 +410,77 @@ for subf in $(ls ${INPUT_FOLDER}); do
   printf "\n\n### Variant calling ###\n\n" >> 01-Logs/log_${subf}.txt
   variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM} &>> 01-Logs/log_${subf}.txt
 
-  # CHECK: Absent variants
+  # CHECK: Absent variant file
   if [ ! -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz ]; then
-    printf "\nWARNING: No variants were recovered for ${subf}. Computation will be skipped.\n"
+    printf "\nWARNING: VCF file missing for ${subf}. Computation will be skipped.\n"
     continue
   fi
 
-  # Create folder
-  mkdir -p 40-Phasing/${subf}
-
-  printf "Phasing; "
-
-  # Phasing
-  printf "\n\n### Phasing ###\n\n" >> 01-Logs/log_${subf}.txt
-  bash 00-Scripts/genome_phase_MOD.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment -o 40-Phasing/${subf} &>> 01-Logs/log_${subf}.txt
-
-  # CHECK: Absent haplotypes
-  if [[ ! -f 40-Phasing/${subf}/${subf}_assembly_h1.fasta || ! -f 40-Phasing/${subf}/${subf}_assembly_h2.fasta ]]; then
-    printf "\nWARNING: No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
-    continue
-  fi
-
-  # INCLUDE HERE HAPLOTYPE LENGTH CLEAN!!!
-
-  # Concatenate haplotypes and rename headers
-  mkdir -p 50-Haplotypes/${subf}
-  hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
-
-  for n in $(seq ${hnum})
-  do
-    if [ ${n} -eq "1" ]; then
-      cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/_[0-9]_length_.*//g' | sed -z "s|NODE|seq_h${n}|${n}" > tmp
-      mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
-    else
-      cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|NODE|seq_h${n}|1" > tmp
-      mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
-    fi
-  done
-
-  # Haplotype duplicate removal (SeqKit)
-  seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta 2>> 01-Logs/log_${subf}.txt > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
-
-  ## ------------------------------------
-  ## Haplotype abundance ratio (Kallisto)
-  ## ------------------------------------
-
-  # CHECK: Absent clean haplotypes
-  if [ ! -f 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta ]; then
-    printf "\nWARNING: No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
-    continue
-  fi
-
-  # Kallisto (Only applied to strains with more that one haplotype)
-  if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "1" ]
-  then
+  # CHECK: No variants recovered
+  if [ $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) != 0 ]; then
+ 
     # Create folder
-    mkdir -p 60-Kallisto
+    mkdir -p 40-Phasing/${subf}
 
-    printf "Abundance ratio; "
+    printf "Phasing; "
 
-    # Kallisto
-    printf "\n\n### Kallisto ###\n\n" >> 01-Logs/log_${subf}.txt
-    kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta &>> 01-Logs/log_${subf}.txt
-    kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} &>> 01-Logs/log_${subf}.txt
+    # Phasing
+    printf "\n\n### Phasing ###\n\n" >> 01-Logs/log_${subf}.txt
+    bash 00-Scripts/genome_phase_MOD.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment -o 40-Phasing/${subf} &>> 01-Logs/log_${subf}.txt
 
-    # Filter haplotypes
-    cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
-    Rscript 00-Scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv &>> 01-Logs/log_${subf}.txt
+    # CHECK: Absent haplotypes
+    if [[ ! -f 40-Phasing/${subf}/${subf}_assembly_h1.fasta || ! -f 40-Phasing/${subf}/${subf}_assembly_h2.fasta ]]; then
+      printf "\nWARNING: No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
+      continue
+    fi
+
+    # INCLUDE HERE HAPLOTYPE LENGTH CLEAN!!! (For small matches!)
+
+    # Concatenate haplotypes and rename headers
+    mkdir -p 50-Haplotypes/${subf}
+    hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
+
+    for n in $(seq ${hnum})
+    do
+      if [ ${n} -eq "1" ]; then
+        cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/_[0-9]_length_.*//g' | sed -z "s|NODE|seq_h${n}|${n}" > tmp
+        mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
+      else
+        cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|NODE|seq_h${n}|1" > tmp
+        mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
+      fi
+    done
+
+    # Haplotype duplicate removal (SeqKit)
+    seqkit rmdup -s 50-Haplotypes/${subf}/${subf}_haplotypes.fasta 2>> 01-Logs/log_${subf}.txt > 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta
+
+    ## ------------------------------------
+    ## Haplotype abundance ratio (Kallisto)
+    ## ------------------------------------
+
+    # CHECK: Absent clean haplotypes
+    if [ ! -f 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta ]; then
+      printf "\nWARNING: No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
+      continue
+    fi
+
+    # Kallisto (Only applied to strains with more that one haplotype)
+    if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "1" ]
+    then
+      # Create folder
+      mkdir -p 60-Kallisto
+
+      printf "Abundance ratio; "
+
+      # Kallisto
+      printf "\n\n### Kallisto ###\n\n" >> 01-Logs/log_${subf}.txt
+      kallisto index -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta &>> 01-Logs/log_${subf}.txt
+      kallisto quant -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx -o 60-Kallisto/${subf} ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} &>> 01-Logs/log_${subf}.txt
+
+      # Filter haplotypes
+      cp 60-Kallisto/${subf}/abundance.tsv 60-Kallisto/${subf}/abundance.orig.tsv
+      Rscript 00-Scripts/filterHaplotypes.R -i 60-Kallisto/${subf}/abundance.tsv &>> 01-Logs/log_${subf}.txt
+    fi
   fi
 
   # Merge Kallisto output
