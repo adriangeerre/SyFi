@@ -575,25 +575,19 @@ for subf in $(ls ${INPUT_FOLDER}); do
       continue
     fi
 
-    # Concatenate haplotypes and rename headers
-    mkdir -p 50-Haplotypes/${subf}
-    hnum=$(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
-
     # Haplotype length correction: remove short matches
-    #if [ $(grep "^>" 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | wc -l) -gt 1 ];then
-      # Get length target (16S) - Select sequences minus BPDEV from target
-      #tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
-      #min_tl=$((tl-${BPDEV}))
-      # Filter sequences within length range (array)
-      #ids=($(grep "^>" 50-Haplotypes/${subf}/${subf}_haplotypes.fasta))
-    #fi
+    mkdir -p 50-Haplotypes/${subf}
+    tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
+    min_tl=$((tl-${BPDEV}))
+    seqtk seq -l ${min_tl} <(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta) > 50-Haplotypes/${subf}/${subf}_haplotypes.fasta 
 
-    
+    # Rename headers
+    hnum=$(50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
 
     for n in $(seq ${hnum})
     do
       if [ ${n} -eq "1" ]; then
-        cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta | sed 's/_[0-9]_length_.*//g' | sed -z "s|NODE|seq_h${n}|${n}" > tmp
+        cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed 's/_[0-9]_length_.*//g' | sed -z "s|NODE|seq_h${n}|${n}" > tmp
         mv tmp 50-Haplotypes/${subf}/${subf}_haplotypes.fasta
       else
         cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed -z "s|NODE|seq_h${n}|1" > tmp
