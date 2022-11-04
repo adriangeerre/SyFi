@@ -17,7 +17,8 @@ function usage()
     echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure> (REQUIRED)."
     echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S (REQUIRED)."
     echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
-    echo "  -x  | --extension        Reference file extension (default: fasta)."
+    echo "  --fasta-extension        Reference file extension (default: fasta)."
+    echo "  --fastq-extension        Illumina reads file extension (default: fastq.gz)."
     echo "  -t  | --threads          Number of threads (default: 1)."
     echo "  -mn | --min_memory       Minimum memory required (default: 4GB)."
     echo "  -mx | --max_memory       Maximum memory required (default: 8GB)."
@@ -58,7 +59,8 @@ function citation()
 
 # Default variables
 THREADS=1
-EXTENSION='fasta'
+FAEXT='fasta'
+FQEXT='fastq.gz'
 MIN_MEM=4
 MAX_MEM=8
 BPDEV=100
@@ -90,9 +92,14 @@ while [[ "$1" > 0 ]]; do
       BPDEV=$1
       shift
       ;;
-    -x | --extension)
+    --fasta_extension)
       shift
-      EXTENSION=$1
+      FAEXT=$1
+      shift
+      ;;
+    --fastq_extension)
+      shift
+      FQEXT=$1
       shift
       ;;
     -t | --threads)
@@ -326,7 +333,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Create folder
   mkdir -p 10-Blast 11-Sequences/${subf} 01-Logs
   # Blastn
-  blastn -query ${INPUT_FOLDER}/${subf}/${subf}.${EXTENSION} -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
+  blastn -query ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
   printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 
   # CHECK: Absent target match (Perhaps, remove small hits!)
@@ -347,7 +354,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Alignment
   printf "### BWA mapping ###\n\n" > 01-Logs/log_${subf}.txt
   bwa-mem2 index 11-Sequences/${subf}/${subf}.fasta &>> 01-Logs/log_${subf}.txt
-  bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.sam
+  bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} -t ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.sam
 
   # Sam to BAM
   samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
@@ -388,7 +395,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 	
   samtools view -b 20-Alignment/${subf}/${subf}.rebuild.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.rebuild.bam
   samtools sort -o 20-Alignment/${subf}/${subf}.rebuild.sort.bam -O bam 20-Alignment/${subf}/${subf}.rebuild.bam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt
-  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.rebuild.bam 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.rebuild.mapped.bam 
+  #samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.rebuild.bam 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.rebuild.mapped.bam 
 
   ## -------------------------------------------
   ## Variant Calling & Phasing (GATK & BCFTools)
