@@ -57,7 +57,7 @@ wget ...
 tar -xvzf latest_release.tar.gz
 ```
 
-Then, export the new path into $PATH inside _.bashrc_.
+Then, use the export command to add the new path into the current $PATH inside _.bashrc_.
 
 ### Usage
 
