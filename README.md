@@ -15,6 +15,7 @@ The pipeline depends on:
 - [BCFtools](https://samtools.github.io/bcftools/)
 - [Whatshap](https://whatshap.readthedocs.io/en/latest/)
 - [SeqKit](https://bioinf.shenwei.me/seqkit/)
+- [Seqtk](https://github.com/lh3/seqtk)
 - [Kallisto](https://pachterlab.github.io/kallisto/about)
 - [Bedtools](https://bedtools.readthedocs.io/en/latest/)
 - [R](https://www.r-project.org/)
