@@ -69,6 +69,12 @@ function citation()
   printf "\n"
 }
 
+# Colors
+red=$(tput setaf 1)
+yellow=$(tput setaf 220)
+blue=$(tput setaf 27)
+normal=$(tput sgr0)
+
 # Default variables
 THREADS=1
 FAEXT='fasta'
@@ -81,7 +87,7 @@ KEEPF=0
 
 # display usage if 
 if [[ $# -lt 4  && $1 != "-h" && $1 != "--help" && $1 != "-c" && $1 != "--citation" && $1 != "--folder_structure" ]]; then
-  echo "ERROR: You must provided at least the assembly and alignment files."
+  echo "${red}ERROR:${normal} You must provided at least the assembly and alignment files."
   usage
   exit 2
 fi
@@ -164,8 +170,8 @@ done
 trap ctrl_c INT
 
 function ctrl_c() {
-  printf "\nExecution halted by user.\n"
-  printf "\nExecution halted by user.\n" >> 01-Logs/log_${subf}.txt
+  printf "\n${red}Execution halted by user.${normal}\n"
+  printf "\n${red}Execution halted by user.${normal}\n" >> 01-Logs/log_${subf}.txt
   exit
 }
 
@@ -173,13 +179,13 @@ function ctrl_c() {
 
 # Input folder
 if [[ ! -d ${INPUT_FOLDER} ]]; then
-  echo "ERROR: Folder ${INPUT_FOLDER} missing."
+  echo "${red}ERROR:${normal} Folder ${INPUT_FOLDER} missing."
   exit
 fi
 
 # Keep file
 if [[ ! "$KEEPF" =~ ^[0-9]+$ || ${KEEPF} -gt 2 || ${KEEPF} -lt 0 ]]; then
-  echo "ERROR: Keep temporary files should be a number between 0 and 2 [0: none, 1: BAM's, or 2: All]."
+  echo "${red}ERROR:${normal} Keep temporary files should be a number between 0 and 2 [0: none, 1: BAM's, or 2: All]."
   exit
 fi
 
@@ -312,8 +318,6 @@ function copyNumber() {
   # Arguments
   INPUT_FOLDER=$1
   subf=$2
-  SEARCH_TARGET=$3
-  BPDEV=$4
 
   printf "Copy number; "
 
@@ -329,26 +333,13 @@ function copyNumber() {
   # Get number of bases in assembly reads
   braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
-  if [ $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) -gt 1 ]
-  then
-    # Get length target (16S) - Select sequences ± BPDEV from target
-    tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
-    max_tl=$((tl+${BPDEV}))
-    min_tl=$((tl-${BPDEV}))
-    # Filter sequences within length range (array)
-    ids=($(grep "^>" 20-Alignment/${subf}/${subf}.fasta | awk -F "_" -v min_tl="$min_tl" '($4 > min_tl)' | awk -F "_" -v max_tl="$max_tl" '($4 < max_tl)' | sed 's/>//g'))
+  # Get length of longest recovered target
+  l16S=$(cut -f 14 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv)
 
-    # Get length of longest recovered target
-    l16S=$(for i in ${ids[*]}; do echo $i | cut -d "_" -f 4; done | awk -v max=0 'NR == FNR {if($1 > max) {mals 5x = $1}} END {print max}')
-    # Number of bases in selected reads
-    b16S=$(samtools view 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v var="${ids[*]}" 'BEGIN{split(var, arr); for (i in arr) names[arr[i]]} $3 in names' | cut -f 10 | tr -d "\n" | wc -c)
-
-  else
-    # Get length of unique recovered target
-    l16S=$(cat 20-Alignment/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-    # Get number of bases of unique recovered target
-    b16S=$(zcat 20-Alignment/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
-  fi
+  # Number of bases in selected reads
+  start=$(cut -f 7 20-Alignment/${subf}/flanking/max.tsv)
+  end=$(cut -f 8 20-Alignment/${subf}/flanking/max.tsv)
+  b16S=$(bedtools genomecov -d -ibam 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v start=${start} '($2 > start)' | awk -v end=${end} '($2 < end)' | awk '{sum+=$3;} END{print sum;}')
 
   # Compute ratio (round <1 to 1)
   cnum=$(echo "(${b16S}/${l16S}) / (${braw}/${lgen})" | bc -l)
@@ -432,7 +423,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   ## CHECK: Avoid re-computation
   if [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 0 ]]; then
-    printf "\nWARNING: computation finished for ${subf}. To re-run include the -f/--force argument."
+    printf "\n${yellow}WARNING:${normal} computation finished for ${subf}. To re-run include the -f/--force argument."
     continue
   elif [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 1 ]]; then
     rm 10-Blast/${subf}.tsv
@@ -445,17 +436,17 @@ for subf in $(ls ${INPUT_FOLDER}); do
   ## CHECK: Input in folder
   # Fasta input
   if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} ]]; then
-    echo "ERROR: File ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} missing, please use the \"-e/--extension\" argument if the extension is not \"fasta\"."
+    echo "${red}ERROR:${normal} File ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} missing, please use the \"-e/--extension\" argument if the extension is not \"fasta\"."
     exit
   fi
 
   # Fastq input
   if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} || ! -f ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} ]]; then
-    echo "ERROR: One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\"."
+    echo "${red}ERROR:${normal} One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\"."
     exit
   fi
 
-  printf "\nSample: $subf\n"
+  printf "\n${blue}Sample:${normal} $subf\n"
 
   ## ------------------------------------
   ## Target recovery from contigs (BLAST)
@@ -471,7 +462,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # CHECK: Absent target match (Perhaps, remove small hits!)
   if [ $(cat 11-Sequences/${subf}/${subf}.fasta | wc -l) -lt 1 ]; then
-    printf "\nWARNING: No target was found for ${subf}. Computation will be skipped.\n"
+    printf "\n${yellow}WARNING:${normal} No target was found for ${subf}. Computation will be skipped.\n"
     continue
   fi
 
@@ -510,7 +501,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # CHECK: Absent R1/R2 for de novo assembly
   if [[ $(zcat 20-Alignment/${subf}/${subf}_R1.fastq.gz | wc -l) -eq 0 || $( zcat 20-Alignment/${subf}/${subf}_R2.fastq.gz | wc -l) -eq 0 ]]; then
-    printf "\nWARNING: No target reads were recovered for ${subf}. Computation will be skipped.\n"
+    printf "\n${yellow}WARNING:${normal} No target reads were recovered for ${subf}. Computation will be skipped.\n"
     continue
   fi
 
@@ -519,7 +510,42 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # SPAdes (Unambigous nucleotides assembly)
   printf "\n\n### Contig re-build ###\n\n" >> 01-Logs/log_${subf}.txt
 	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM} &>> 01-Logs/log_${subf}.txt
-  cp 20-Alignment/${subf}/spades/contigs.fasta 20-Alignment/${subf}/${subf}.fasta
+
+  # Size select SPAdes recovered target
+  tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
+  min_tl=$((tl-${BPDEV}))
+  seqtk seq -L ${min_tl} 20-Alignment/${subf}/spades/contigs.fasta > 20-Alignment/${subf}/spades/contigs.seqtk.fasta
+  if [ $(grep "^>" 20-Alignment/${subf}/spades/contigs.seqtk.fasta | wc -l) -eq 0 ]; then
+    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n"
+    continue
+  fi
+  
+  # Define target without flanking regions
+  mkdir -p 20-Alignment/${subf}/flanking
+  blastn -subject ${SEARCH_TARGET} -query 20-Alignment/${subf}/spades/contigs.seqtk.fasta -outfmt "6 std sseq" > 20-Alignment/${subf}/flanking/${subf}.target.tsv
+
+  # Size select blast hits
+  while read -r line;do
+    total=$(echo ${line} | cut -d " " -f 4)
+    mist=$(echo ${line} | cut -d " " -f 6)
+    len=$((total-mist))
+    if [ $len -ge $min_tl ]; then
+      printf "${line}\t${len}\n"
+    fi
+  done < 20-Alignment/${subf}/flanking/${subf}.target.tsv > 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv
+  
+  # Check if hit was not recovered
+  if [ $(cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | wc -l) == 0 ]; then
+    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n"
+    continue
+  fi
+
+  # Select maximum (in all cases)
+  cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | sort -n -k14 | tail -n 1 > 20-Alignment/${subf}/flanking/max.tsv
+  cut -f 1 20-Alignment/${subf}/flanking/${subf}.target.tsv > 20-Alignment/${subf}/flanking/max.header.txt
+
+  # Select recovered sequence given header of maximum
+  seqtk subseq 20-Alignment/${subf}/spades/contigs.seqtk.fasta 20-Alignment/${subf}/flanking/max.header.txt > 20-Alignment/${subf}/${subf}.fasta
 
   # Align
   printf "\n\n### Contig re-alignment (BWA) ###\n\n" >> 01-Logs/log_${subf}.txt
@@ -536,7 +562,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # CHECK: Absent rebuilt BAM
   if [[ ! -f 20-Alignment/${subf}/${subf}.rebuild.sort.bam || ! -f 20-Alignment/${subf}/${subf}.fasta ]]; then
-    printf "\nWARNING: No target reads were recovered for ${subf}. Computation will be skipped.\n"
+    printf "\n${yellow}}WARNING:${normal} No target reads were recovered for ${subf}. Computation will be skipped.\n"
     continue
   fi
 
@@ -552,7 +578,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # CHECK: Absent variant file
   if [ ! -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz ]; then
-    printf "\nWARNING: VCF file missing for ${subf}. Computation will be skipped.\n"
+    printf "\n${yellow}WARNING:${normal} VCF file missing for ${subf}. Computation will be skipped.\n"
     continue
   fi
 
@@ -571,7 +597,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
     # CHECK: Absent haplotypes
     if [[ ! -f 40-Phasing/${subf}/${subf}_assembly_h1.fasta || ! -f 40-Phasing/${subf}/${subf}_assembly_h2.fasta ]]; then
-      printf "\nWARNING: No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
+      printf "\n${yellow}WARNING:${normal} No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
       continue
     fi
 
@@ -579,10 +605,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
     mkdir -p 50-Haplotypes/${subf}
     tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
     min_tl=$((tl-${BPDEV}))
-    seqtk seq -l ${min_tl} <(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta) > 50-Haplotypes/${subf}/${subf}_haplotypes.fasta 
+    seqtk seq -L ${min_tl} <(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta) > 50-Haplotypes/${subf}/${subf}_haplotypes.fasta 
 
     # Rename headers
-    hnum=$(50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
+    hnum=$(cat 50-Haplotypes/${subf}/${subf}_haplotypes.fasta | sed 's/^> />/g' | grep "^>" | wc -l)
 
     for n in $(seq ${hnum})
     do
@@ -604,7 +630,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
     # CHECK: Absent clean haplotypes
     if [ ! -f 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta ]; then
-      printf "\nWARNING: No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
+      printf "\n${yellow}WARNING:${normal} No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
       continue
     fi
 
@@ -630,7 +656,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
       # --------------- #
 
       # Copy number
-      copyNumber ${INPUT_FOLDER} ${subf} ${SEARCH_TARGET} ${BPDEV}
+      copyNumber ${INPUT_FOLDER} ${subf}
 
       # ---------------- #
       # III. Integration #
@@ -638,7 +664,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
       # CHECK: Absent kallisto output
       if [ ! -f 60-Integration/${subf}/abundance.tsv ]; then
-        printf "\nWARNING: Missing kallisto output for ${subf}. Computation will be skipped.\n"
+        printf "\n${yellow}WARNING:${normal} Missing kallisto output for ${subf}. Computation will be skipped.\n"
         continue
       fi
 
@@ -655,7 +681,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
       # CHECK: Absent integration output
       if [ ! -f 60-Integration/${subf}/integration.tsv ]; then
-        printf "\nWARNING: Missing integration output for ${subf}. Computation will be skipped.\n"
+        printf "\n${yellow}WARNING:${normal} Missing integration output for ${subf}. Computation will be skipped.\n"
         continue
       fi
 
@@ -673,7 +699,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # --------------- #
 
     # Copy number
-    copyNumber ${INPUT_FOLDER} ${subf} ${SEARCH_TARGET} ${BPDEV}
+    copyNumber ${INPUT_FOLDER} ${subf}
 
     # ---------------- #
     # III. Integration #

@@ -31,7 +31,7 @@ if (opt$mode == "unique") {
 
   # Integration
   # -----------
-  inte <- data.frame(target_id = "seq_h1", length=cnum$Target_length, eff_length="-", est_counts="-", tpm="-", ratio=1, ratio_round=1, copy_number=cnum$Copy_number, haplotype_divisible=1, proportion=cnum$Copy_number, proportion_round=round(as.numeric(cnum$Copy_number)), final_output=round(as.numeric(cnum$Copy_number)), per_haplotype=round(as.numeric(cnum$Copy_number)))
+  inte <- data.frame(target_id = "seq_h1", total_length=cnum$Target_length, target_length=cnum$Target_length, eff_length="-", est_counts="-", tpm="-", ratio=1, ratio_round=1, copy_number=cnum$Copy_number, haplotype_divisible=1, proportion=cnum$Copy_number, proportion_round=round(as.numeric(cnum$Copy_number)), final_output=round(as.numeric(cnum$Copy_number)), per_haplotype=round(as.numeric(cnum$Copy_number)))
   
   # Save
   # ----
@@ -47,6 +47,8 @@ if (opt$mode == "unique") {
   # Integration
   # -----------
   # First computation
+  abun$target_length <- cnum$Target_length
+  abun <- abun[, c("target_id", "length", "target_length", "eff_length", "est_counts", "tpm", "ratio")]
   abun$ratio_round <- round(abun$ratio)
   abun$copy_number <- cnum$Copy_number
   abun$haplotype_divisible <- sum(abun$ratio_round)

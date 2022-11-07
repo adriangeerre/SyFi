@@ -1,4 +1,6 @@
-# Pipeline
+# Syfi
+
+## Pipeline
 
 This pipeline uses Illumina reads, contigs and a sequence target (e.g., 16S) to obtain the target haplotypes abundances ratio.
 
@@ -14,6 +16,7 @@ The pipeline depends on:
 - [Whatshap](https://whatshap.readthedocs.io/en/latest/)
 - [SeqKit](https://bioinf.shenwei.me/seqkit/)
 - [Kallisto](https://pachterlab.github.io/kallisto/about)
+- [Bedtools](https://bedtools.readthedocs.io/en/latest/)
 - [R](https://www.r-project.org/)
 
 ## Installation
@@ -25,8 +28,8 @@ __Conda:__
 The conda environment is supplemented in the repository. You can create the environment using `conda env create -f GijsPipeline.yml`. Otherwise, you can try creating your own environment using running the following code:
 
 ```
-conda create -n GijsPipeline -y
-conda activate GijsPipeline
+conda create -n SyFi -y
+conda activate SyFi
 conda install -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap=0.17 python=3.6.13 tabix
 conda install -c conda-forge r-base r-optparse
 
@@ -99,13 +102,12 @@ Download the latest package release. Please, modify the code with your own folde
 cd $SOFTWARE_FOLDER_PATH
 wget ...
 tar -xvzf latest_release.tar.gz
-
 ```
 
 ### Usage
 
 ```
-./pipeline.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -p <PREFIX> -t <THREADS>
+./pipeline.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>
 ```
 
 ### Tips and tricks
