@@ -25,17 +25,13 @@ The pipeline depends on:
 
 __Conda:__
 
-The conda environment is supplemented in the repository. You can create the environment using `conda env create -f GijsPipeline.yml`. Otherwise, you can try creating your own environment using running the following code:
+The conda environment is supplemented in the repository. You can create the environment using `conda env create -f SyFi.yml`. Otherwise, you can try creating your own environment using running the following code:
 
 ```
 conda create -n SyFi -y
 conda activate SyFi
-conda install -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap=0.17 python=3.6.13 tabix
+conda install -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap=0.17 python=3.6.13 tabix bedtools seqtk
 conda install -c conda-forge r-base r-optparse
-
-# Correct Samtools libcrypto.so error: (Whatshap still incompatible!)
-# cd anaconda/envs/GijsPipeline/lib
-# ln -s libcrypto.so.1.1 libcrypto.so.1.0.0
 ```
 
 ### Executable software
@@ -50,50 +46,6 @@ tar -xvzf 4.2.6.1.tar.gz
 echo 'export PATH="$SOFTWARE_FOLDER_PATH/gatk-4.2.6.1:$PATH"' >> $HOME/.bashrc
 ```
 
-__Samtools:__
-
-Unfortunately, the softwares Samtools and Whatshap can not be installed in the same conda environment. After testing long, we found major incompatibilities between the packages among the different available version. Thus, we decided to install samtools and htslib manually because whatshap only provide the conda installation.
-
-The compilation was tested in an Ubuntu 20.04 machine. You might require sudo access to run some steps of the installation. The htslib include also tabix and bgzip, you can decide to include them or not in the conda environment.
-
-```
-# Download source
-cd $SOFTWARE_FOLDER_PATH
-wget https://github.com/samtools/samtools/releases/download/1.16/samtools-1.16.tar.bz2
-wget https://github.com/samtools/htslib/releases/download/1.16/htslib-1.16.tar.bz2
-
-# Decompress
-bzip2 samtools-1.16.tar.bz2
-tar -xf samtools-1.16.tar
-bzip2 htslib-1.16.tar.bz2
-tar -xf htslib-1.16.tar
-
-# Required libraries
-sudo apt-get update
-sudo apt-get install build-essential
-sudo apt-get install libncurses5-dev libncursesw5-dev zlib1g-dev libbz2-dev liblzma-dev
-
-# Build source (extracted from http://www.htslib.org/download/)
-cd samtools-1.16
-./configure --prefix=$SOFTWARE_FOLDER_PATH/Samtools-1.16
-make
-sudo make install
-
-cd htslib-1.16
-./configure --prefix=$SOFTWARE_FOLDER_PATH/HtsLib-1.16
-make
-sudo make install
-
-# Once install correct Owner:Group of the folders
-
-# Add to path
-echo 'export PATH="$SOFTWARE_FOLDER_PATH/Samtools-1.16/bin:$PATH"' >> $HOME/.bashrc
-echo 'export PATH="$SOFTWARE_FOLDER_PATH/HtsLib-1.16/bin:$PATH"' >> $HOME/.bashrc
-
-# Test instalation in a new terminal
-samtools view
-```
-
 ### Download
 
 Download the latest package release. Please, modify the code with your own folder path.
@@ -104,10 +56,38 @@ wget ...
 tar -xvzf latest_release.tar.gz
 ```
 
+Then, export the new path into $PATH inside _.bashrc_.
+
 ### Usage
 
 ```
-./pipeline.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>
+./SyFi.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>
+
+# Required:
+  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>.
+  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S.
+
+# Haplotype deviation:
+  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp).
+
+# Input extension:
+  --fasta-extension        Reference file extension (default: fasta).
+  --fastq-extension        Illumina reads file extension (default: fastq.gz).
+
+# Computation:
+  -t  | --threads          Number of threads (default: 1).
+  -mn | --min_memory       Minimum memory required (default: 4GB).
+  -mx | --max_memory       Maximum memory required (default: 8GB).
+
+# Output options:
+  -k  | --keep_files       Keep temporary files [0: none, 1: BAM's, or 2: All] (default: 0).
+  -v  | --verbose          Verbose mode [0: none, 1: Steps, or 2: All] (default: 0).
+  -f  | --force            Force re-computation of computed samples (default: False).
+
+# Display:
+  -h  | --help             Display help.
+  -c  | --citation         Display citation.
+  --folder_structure       Display required folder structure.
 ```
 
 ### Tips and tricks
