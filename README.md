@@ -45,6 +45,18 @@ Where $ANACONDA_PATH is the path of your own conda/miniconda installation.
 
 For the installation of GATK, we downloaded the pre-compile software from their Github site. In the following code we use the $SOFTWARE_FOLDER_PATH variable to define a potential software folder. Please, modify the code with your own folder path.
 
+__JAVA:__
+
+```
+cd $SOFTWARE_FOLDER_PATH
+wget "https://download.oracle.com/java/19/latest/jdk-19_linux-x64_bin.tar.gz"
+tar -xvzf jdk-19_linux-x64_bin.tar.gz
+echo 'export PATH="$SOFTWARE_FOLDER_PATH/jdk-19.0.1/bin:$PATH"' >> $HOME/.bashrc
+```
+
+More information on Java (jdk) [here](https://www.oracle.com/java/technologies/jdk-script-friendly-urls/).
+
+
 __GATK:__
 ```
 cd $SOFTWARE_FOLDER_PATH
@@ -52,6 +64,8 @@ wget https://github.com/broadinstitute/gatk/archive/refs/tags/4.2.6.1.tar.gz
 tar -xvzf 4.2.6.1.tar.gz
 echo 'export PATH="$SOFTWARE_FOLDER_PATH/gatk-4.2.6.1:$PATH"' >> $HOME/.bashrc
 ```
+
+For more information on how to install GATK refeer to [GATK-Build](https://github.com/broadinstitute/gatk#building).
 
 ### Download
 

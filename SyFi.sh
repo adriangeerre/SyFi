@@ -458,7 +458,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 10-Blast 11-Sequences/${subf} 01-Logs
   # Blastn
   blastn -query ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
-  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | head -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
+  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | sort -n -k4 | tail -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 
   # CHECK: Absent target match (Perhaps, remove small hits!)
   if [ $(cat 11-Sequences/${subf}/${subf}.fasta | wc -l) -lt 1 ]; then
@@ -542,7 +542,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # Select maximum (in all cases)
   cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | sort -n -k14 | tail -n 1 > 20-Alignment/${subf}/flanking/max.tsv
-  cut -f 1 20-Alignment/${subf}/flanking/${subf}.target.tsv > 20-Alignment/${subf}/flanking/max.header.txt
+  cut -f 1 20-Alignment/${subf}/flanking/max.tsv > 20-Alignment/${subf}/flanking/max.header.txt
 
   # Select recovered sequence given header of maximum
   seqtk subseq 20-Alignment/${subf}/spades/contigs.seqtk.fasta 20-Alignment/${subf}/flanking/max.header.txt > 20-Alignment/${subf}/${subf}.fasta
@@ -577,13 +577,13 @@ for subf in $(ls ${INPUT_FOLDER}); do
   variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM} &>> 01-Logs/log_${subf}.txt
 
   # CHECK: Absent variant file
-  if [ ! -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz ]; then
-    printf "\n${yellow}WARNING:${normal} VCF file missing for ${subf}. Computation will be skipped.\n"
-    continue
-  fi
+  #if [ ! -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz ]; then
+  #  printf "\n${yellow}WARNING:${normal} VCF file missing for ${subf}. Computation will be skipped.\n"
+  #  continue
+  #fi
 
   # CHECK: No variants recovered
-  if [ $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) != 0 ]; then
+  if [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) != 0 ]]; then
     # MULTIPLE HAPLOTYPES
 
     # Create folder
