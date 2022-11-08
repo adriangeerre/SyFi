@@ -334,7 +334,7 @@ function copyNumber() {
   braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
   # Get length of longest recovered target
-  l16S=$(cut -f 14 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv)
+  l16S=$(cut -f 14 20-Alignment/${subf}/flanking/max.tsv)
 
   # Number of bases in selected reads
   start=$(cut -f 7 20-Alignment/${subf}/flanking/max.tsv)
@@ -436,14 +436,16 @@ for subf in $(ls ${INPUT_FOLDER}); do
   ## CHECK: Input in folder
   # Fasta input
   if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} ]]; then
-    echo "${red}ERROR:${normal} File ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} missing, please use the \"-e/--extension\" argument if the extension is not \"fasta\"."
-    exit
+    printf "\n${red}ERROR:${normal} File ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} missing, please use the \"-e/--extension\" argument if the extension is not \"fasta\"."
+    printf "\n${yellow}WARNING:${normal} computation will be skipped.\n"
+    continue
   fi
 
   # Fastq input
   if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} || ! -f ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} ]]; then
-    echo "${red}ERROR:${normal} One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\"."
-    exit
+    printf "\n${red}ERROR:${normal} One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\".\n"
+    printf "\n${yellow}WARNING:${normal} computation will be skipped.\n"
+    continue
   fi
 
   printf "\n${blue}Sample:${normal} $subf\n"
@@ -697,6 +699,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # --------------- #
     # II. Copy Number #
     # --------------- #
+
+    # Create folder
+    mkdir -p 60-Integration/${subf}
 
     # Copy number
     copyNumber ${INPUT_FOLDER} ${subf}
