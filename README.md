@@ -1,4 +1,4 @@
-# Syfi
+# SyFi
 
 ## Pipeline
 
@@ -33,7 +33,13 @@ conda create -n SyFi -y
 conda activate SyFi
 conda install -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap=0.17 python=3.6.13 tabix bedtools seqtk
 conda install -c conda-forge r-base r-optparse
+
+# Correct Samtools libcrypto.so error:
+cd $ANACONDA_PATH/envs/SyFi/lib
+ln -s libcrypto.so.1.1 libcrypto.so.1.0.0
 ```
+
+Where $ANACONDA_PATH is the path of your own conda/miniconda installation.
 
 ### Executable software
 
@@ -55,9 +61,8 @@ Download the latest package release. Please, modify the code with your own folde
 cd $SOFTWARE_FOLDER_PATH
 wget ...
 tar -xvzf latest_release.tar.gz
+echo 'export PATH="$SOFTWARE_FOLDER_PATH/SyFi_<version>/bin:$PATH"' >> $HOME/.bashrc
 ```
-
-Then, use the export command to add the new path into the current $PATH inside _.bashrc_.
 
 ### Usage
 
