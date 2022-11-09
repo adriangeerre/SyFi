@@ -12,8 +12,8 @@
 
 function logo() {
   # Colors
-  white=$(tput setaf 231)
-  normal=$(tput sgr0)
+  w=$(tput setaf 231)
+  n=$(tput sgr0)
 
   # Variables
   if [ $1 != "help" ]; then
@@ -27,10 +27,10 @@ function logo() {
 
     # Logo
     echo ""
-    echo "${white}/¯¯¯¯/|¯¯¯| |¯¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${normal}"
-    echo "${white}\____\|___| '\__  \|   _||    |\___||_/|  |\_|${normal}"
-    echo "${white}|¯¯¯¯|\  ¯¯\    |     |  |    ¯¯|   |¯\|  |/¯|${normal}"
-    echo "${white}|____|/___/     /____/   |___|¯¯    |________|${normal}"
+    echo "${w}/¯¯¯¯/|¯¯¯| |¯¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${n}"
+    echo "${w}\____\|___| '\__  \|   _||    |\___||_/|  |\_|${n}"
+    echo "${w}|¯¯¯¯|\  ¯¯\    |     |  |    ¯¯|   |¯\|  |/¯|${n}"
+    echo "${w}|____|/___/     /____/   |___|¯¯    |________|${n}"
     echo ""
     echo "----------------------------------------------"
     echo "Summary:"
@@ -47,10 +47,10 @@ function logo() {
   else
     # Logo
     echo ""
-    echo "${white}/¯¯¯¯/|¯¯¯| |¯¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${normal}"
-    echo "${white}\____\|___| '\__  \|   _||    |\___||_/|  |\_|${normal}"
-    echo "${white}|¯¯¯¯|\  ¯¯\    |     |  |    ¯¯|   |¯\|  |/¯|${normal}"
-    echo "${white}|____|/___/     /____/   |___|¯¯    |________|${normal}"
+    echo "${w}/¯¯¯¯/|¯¯¯| |¯¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${n}"
+    echo "${w}\____\|___| '\__  \|   _||    |\___||_/|  |\_|${n}"
+    echo "${w}|¯¯¯¯|\  ¯¯\    |     |  |    ¯¯|   |¯\|  |/¯|${n}"
+    echo "${w}|____|/___/     /____/   |___|¯¯    |________|${n}"
     echo ""
 
   fi
@@ -59,21 +59,21 @@ function logo() {
 function usage()
 {
   # Colors
-  white=$(tput setaf 231)
-  normal=$(tput sgr0)
+  w=$(tput setaf 231)
+  n=$(tput sgr0)
 
   # Logo
   logo help
 
   # Usage
-  echo "Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>"
+  echo "${w}Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>${n}"
   printf "\n"
-  echo "${white}REQUIRED:${normal}"
+  echo "${w}REQUIRED:${n}"
   echo "# Input"
   echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>."
   echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S."
   printf "\n"
-  echo "${white}OPTIONAL:${normal}"
+  echo "${w}OPTIONAL:${n}"
   echo "# Haplotype deviation:"
   echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
   printf "\n"
