@@ -10,36 +10,92 @@
 # Pipeline (bash) to perform fingerprint identification from microbiome data.
 # ---------------------------------------------------------------------------
 
+function logo() {
+  # Colors
+  white=$(tput setaf 231)
+  normal=$(tput sgr0)
+
+  # Variables
+  if [ $1 != "help" ]; then
+    folder=$1
+    lendev=$2
+    threads=$3
+    minmem=$4
+    maxmem=$5
+    keepfiles=$6
+    force=$7
+
+    # Logo
+    echo ""
+    echo "${white}/¯¯¯¯/|¯¯¯| |¯¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${normal}"
+    echo "${white}\____\|___| '\__  \|   _||    |\___||_/|  |\_|${normal}"
+    echo "${white}|¯¯¯¯|\  ¯¯\    |     |  |    ¯¯|   |¯\|  |/¯|${normal}"
+    echo "${white}|____|/___/     /____/   |___|¯¯    |________|${normal}"
+    echo ""
+    echo "----------------------------------------------"
+    echo "Summary:"
+    date "+    Date: %d/%m/%Y - Time: %H:%M:%S"
+    echo "    Folder: ${folder}"
+    echo "    Deviation length: ${lendev}"
+    echo "    Threads: ${threads}"
+    echo "    Minimum memory: ${minmem} GB"
+    echo "    Minimum memory: ${maxmem} GB"
+    echo "    Keep files: ${force}"
+    echo "    Force: ${force}"
+    echo "----------------------------------------------"
+    echo ""
+  else
+    # Logo
+    echo ""
+    echo "${white}/¯¯¯¯/|¯¯¯| |¯¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${normal}"
+    echo "${white}\____\|___| '\__  \|   _||    |\___||_/|  |\_|${normal}"
+    echo "${white}|¯¯¯¯|\  ¯¯\    |     |  |    ¯¯|   |¯\|  |/¯|${normal}"
+    echo "${white}|____|/___/     /____/   |___|¯¯    |________|${normal}"
+    echo ""
+
+  fi
+}
+
 function usage()
 {
-    echo "Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>"
-    printf "\n"
-    echo "# Required:"
-    echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>."
-    echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S."
-    printf "\n"
-    echo "# Haplotype deviation:"
-    echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
-    printf "\n"
-    echo "# Input extension:"
-    echo "  --fasta-extension        Reference file extension (default: fasta)."
-    echo "  --fastq-extension        Illumina reads file extension (default: fastq.gz)."
-    printf "\n"
-    echo "# Computation:"
-    echo "  -t  | --threads          Number of threads (default: 1)."
-    echo "  -mn | --min_memory       Minimum memory required (default: 4GB)."
-    echo "  -mx | --max_memory       Maximum memory required (default: 8GB)."
-    printf "\n"
-    echo "# Output options:"
-    echo "  -k  | --keep_files       Keep temporary files [0: none, 1: BAM's, or 2: All] (default: 0)."
-    echo "  -v  | --verbose          Verbose mode [0: none, 1: Steps, or 2: All] (default: 0)."
-    echo "  -f  | --force            Force re-computation of computed samples (default: False)."
-    printf "\n"
-    echo "# Display:"
-    echo "  -h  | --help             Display help."
-    echo "  -c  | --citation         Display citation."
-    echo "  --folder_structure       Display required folder structure."
-    printf "\n"
+  # Colors
+  white=$(tput setaf 231)
+  normal=$(tput sgr0)
+
+  # Logo
+  logo help
+
+  # Usage
+  echo "Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>"
+  printf "\n"
+  echo "${white}REQUIRED:${normal}"
+  echo "# Input"
+  echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>."
+  echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S."
+  printf "\n"
+  echo "${white}OPTIONAL:${normal}"
+  echo "# Haplotype deviation:"
+  echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
+  printf "\n"
+  echo "# Input extension:"
+  echo "  --fasta-extension        Reference file extension (default: fasta)."
+  echo "  --fastq-extension        Illumina reads file extension (default: fastq.gz)."
+  printf "\n"
+  echo "# Computation:"
+  echo "  -t  | --threads          Number of threads (default: 1)."
+  echo "  -mn | --min_memory       Minimum memory required in GB(default: 4GB)."
+  echo "  -mx | --max_memory       Maximum memory required in GB (default: 8GB)."
+  printf "\n"
+  echo "# Output options:"
+  echo "  -k  | --keep_files       Keep temporary files [0: none, 1: BAM's, or 2: All] (default: 0)."
+  echo "  -v  | --verbose          Verbose mode [0: none, 1: Steps, or 2: All] (default: 0)."
+  echo "  -f  | --force            Force re-computation of computed samples (default: False)."
+  printf "\n"
+  echo "# Display:"
+  echo "  -h  | --help             Display help."
+  echo "  -c  | --citation         Display citation."
+  echo "  --folder_structure       Display required folder structure."
+  printf "\n"
 }
 
 function folder_structure()
@@ -49,11 +105,11 @@ function folder_structure()
   echo "For example:"
   echo ""
   echo "input_folder/
-          └── sub-folder_1
+          └── strain_1
               ├── strain_1_R1.fastq.gz
               ├── strain_1_R2.fastq.gz
               └── strain_1.fasta
-          └── sub-folder_2
+          └── strain_2
               ├── strain_2_R1.fastq.gz
               ├── strain_2_R2.fastq.gz
               └── strain_2.fasta"
@@ -62,6 +118,7 @@ function folder_structure()
 
 function citation()
 {
+  logo help
   printf "\n"
   echo "Thank you for using <CHANGE_NAME>. Please, cite:"
   echo ""
@@ -73,6 +130,7 @@ function citation()
 red=$(tput setaf 1)
 yellow=$(tput setaf 220)
 blue=$(tput setaf 27)
+green=$(tput setaf 10)
 normal=$(tput sgr0)
 
 # Default variables
@@ -81,7 +139,7 @@ FAEXT='fasta'
 FQEXT='fastq.gz'
 MIN_MEM=4
 MAX_MEM=8
-BPDEV=100
+BPDEV=300
 FORCE=0
 KEEPF=0
 
@@ -330,7 +388,7 @@ function copyNumber() {
   # Variables
   # Get length of assembly
   lgen=$(cat ${INPUT_FOLDER}/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
-  # Get number of bases in assembly reads
+  # Get number of bases in assembly reads (Speed up?)
   braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
   # Get length of longest recovered target
@@ -419,11 +477,14 @@ function fingerPrint() {
 # I. Haplotypes #
 #-------------- #
 
+# Call logo
+logo ${INPUT_FOLDER} ${BPDEV} ${THREADS} ${MIN_MEM} ${MAX_MEM} ${KEEPF} ${FORCE}
+
 for subf in $(ls ${INPUT_FOLDER}); do
 
   ## CHECK: Avoid re-computation
   if [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 0 ]]; then
-    printf "\n${yellow}WARNING:${normal} computation finished for ${subf}. To re-run include the -f/--force argument."
+    printf "\n${green}SUCCESS:${normal} computation finished for ${subf}. To re-run include the -f/--force argument."
     continue
   elif [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 1 ]]; then
     rm 10-Blast/${subf}.tsv
@@ -443,11 +504,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # Fastq input
   if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} || ! -f ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} ]]; then
-    printf "\n${red}ERROR:${normal} One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\".\n"
+    printf "\n${red}ERROR:${normal} One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\"."
     printf "\n${yellow}WARNING:${normal} computation will be skipped.\n"
     continue
   fi
 
+  date "+start: %d/%m/%Y - %H:%M:%S"
   printf "\n${blue}Sample:${normal} $subf\n"
 
   ## ------------------------------------
@@ -667,6 +729,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
       # CHECK: Absent kallisto output
       if [ ! -f 60-Integration/${subf}/abundance.tsv ]; then
         printf "\n${yellow}WARNING:${normal} Missing kallisto output for ${subf}. Computation will be skipped.\n"
+        date "end: +%d/%m/%Y - %H:%M:%S"
         continue
       fi
 
@@ -684,6 +747,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
       # CHECK: Absent integration output
       if [ ! -f 60-Integration/${subf}/integration.tsv ]; then
         printf "\n${yellow}WARNING:${normal} Missing integration output for ${subf}. Computation will be skipped.\n"
+        date "end: +%d/%m/%Y - %H:%M:%S"
         continue
       fi
 
@@ -759,4 +823,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 done
 
 # Final format
+
+date "+FINISH date: +%d/%m/%Y - time: %H:%M:%S"
+
 printf "\n"
