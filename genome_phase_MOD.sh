@@ -5,9 +5,6 @@
 #Modified on: June 16 2022
 #Version: 1.2.0
 
-#tools
-# source /opt/conda/anaconda3/etc/profile.d/conda.sh
-
 #parse input options
 while getopts "hs:t:r:v:i:o:" OPTION; do
     case $OPTION in
@@ -66,13 +63,6 @@ if [ ${inputincomplete} ]; then
     exit 1
 fi
 
-#########
-# ERASE #
-#########
-SAMTOOLS="/home/au614901/Software/miniconda3/envs/NGSTools/bin/samtools"
-BCFTOOLS="/home/au614901/Software/miniconda3/envs/BCFTools/bin/bcftools"
-
-##Bam file
 #bam
 illumina_bam="30-VariantCalling/${sample}/mapped_filtered/${sample}.filtered.bam"
 if [ ! -e ${illumina_bam} ]; then
@@ -110,23 +100,28 @@ bwa_mapping () {
     
     # Alignment
     # bwa-mem2 index ${fasta} # Already done in the variant calling
-    # ${SAMTOOLS} faidx ${fasta} # Already done in the variant calling
-    bwa-mem2 mem -M -t ${threads} ${fasta} ${R1} ${R2} | ${SAMTOOLS} sort -@ ${threads} -m 1G - -o ${output_illumina}
-    ${SAMTOOLS} index -b ${output_illumina}
+    # samtools faidx ${fasta} # Already done in the variant calling
+    bwa-mem2 mem -M -t ${threads} ${fasta} ${R1} ${R2} | samtools sort -@ ${threads} -m 1G - -o ${output_illumina}
+    samtools index -b ${output_illumina}
 }
+
+
+printf "\n--- Mapping ---\n"
+
 
 ##map to reference if no bam files
 if ! { [ -f ${illumina_bam} ] && [ -f ${output_illumina} ]; }; then
     bwa_mapping ${ref_fasta} ${threads} ${output_illumina}
 fi
 
-#activate conda enviroment with whatshap installation
-# conda activate base
+printf "\n--- Phasing ---\n"
 
 ##phase variants and output vcf file
 if [ ! -f ${output_vcf} ]; then
     whatshap phase -o ${output_vcf} --reference ${ref_fasta} ${vcf_file} ${illumina_bam} --ignore-read-groups --sample ${sample} --indels --output-read-list ${output_list} 
 fi
+
+printf "\n--- VCF to GTF ---\n"
 
 ##visualise
 #convert vcf to gtf
@@ -134,14 +129,17 @@ if [ ! -f ${output_gtf} ]; then
     whatshap stats --gtf ${output_gtf} ${output_vcf}
 fi
 
+printf "\n--- Compress and Index ---\n"
+
+
 #zip and index vcf
 if [ ! -f ${output_vcf}.gz ]; then
-    gzip -c ${output_vcf} > ${output_vcf}.gz
+    bgzip -c ${output_vcf} > ${output_vcf}.gz
     tabix -p vcf ${output_vcf}.gz
 fi
 
-# conda deactivate
+echo "\n--- VCF to Fasta ---\n"
 
 ##phased referece
-${BCFTOOLS} consensus -H 1 -f ${ref_fasta} ${output_vcf}.gz > ${output_dir}/${sample}_assembly_h1.fasta
-${BCFTOOLS} consensus -H 2 -f ${ref_fasta} ${output_vcf}.gz > ${output_dir}/${sample}_assembly_h2.fasta
+bcftools consensus -H 1 -f ${ref_fasta} ${output_vcf}.gz > ${output_dir}/${sample}_assembly_h1.fasta
+bcftools consensus -H 2 -f ${ref_fasta} ${output_vcf}.gz > ${output_dir}/${sample}_assembly_h2.fasta
