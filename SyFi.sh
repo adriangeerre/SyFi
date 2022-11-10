@@ -18,12 +18,13 @@ function logo() {
   # Variables
   if [ $1 != "help" ]; then
     folder=$1
-    lendev=$2
-    threads=$3
-    minmem=$4
-    maxmem=$5
-    keepfiles=$6
-    force=$7
+    target=$2
+    lendev=$3
+    threads=$4
+    minmem=$5
+    maxmem=$6
+    keepfiles=$7
+    force=$8
 
     # Logo
     echo ""
@@ -34,14 +35,18 @@ function logo() {
     echo ""
     echo "----------------------------------------------"
     echo "Summary:"
-    date "+    Date: %d/%m/%Y - Time: %H:%M:%S"
+    date "+    Date: %d/%m/%Y"
     echo "    Folder: ${folder}"
+    echo "    Target: ${target}"
     echo "    Deviation length: ${lendev}"
     echo "    Threads: ${threads}"
     echo "    Minimum memory: ${minmem} GB"
     echo "    Minimum memory: ${maxmem} GB"
     echo "    Keep files: ${force}"
     echo "    Force: ${force}"
+    echo ""
+    echo "Progress:"
+    checkProgress ${folder}
     echo "----------------------------------------------"
     echo ""
   else
@@ -246,6 +251,31 @@ if [[ ! "$KEEPF" =~ ^[0-9]+$ || ${KEEPF} -gt 2 || ${KEEPF} -lt 0 ]]; then
   echo "${red}ERROR:${normal} Keep temporary files should be a number between 0 and 2 [0: none, 1: BAM's, or 2: All]."
   exit
 fi
+
+# Check: progress table
+function checkProgress() {
+  # Colors
+  r=$(tput setaf 1)
+  y=$(tput setaf 220)
+  g=$(tput setaf 10)
+  n=$(tput sgr0)
+
+  # Variables
+  INPUT_FOLDER=$1
+
+  # Check file
+  if [ -e progress.txt ]; then
+    total=$(ls $INPUT_FOLDER | wc -l)
+    success=$(grep "Success" progress.txt | wc -l)
+    skipped=$(grep "Skipped" progress.txt | wc -l)
+    failed=$(grep "Failed" progress.txt | wc -l)
+    printf "\tSuccess: ${g} ${success} ${n}\n\tSkipped: ${y} ${skipped} ${n}\n\tFailed: ${r}  ${failed} ${n}\n\tTotal:    ${total}\n"
+  else
+    total=$(ls $INPUT_FOLDER | wc -l)
+    printf "\tSuccess: ${g} 0 ${n}\n\tSkipped: ${y} 0 ${n}\n\tFailed: ${r}  0 ${n}\n\tTotal:    ${total}\n"
+  fi
+
+}
 
 ### Functions
 
@@ -478,20 +508,36 @@ function fingerPrint() {
 #-------------- #
 
 # Call logo
-logo ${INPUT_FOLDER} ${BPDEV} ${THREADS} ${MIN_MEM} ${MAX_MEM} ${KEEPF} ${FORCE}
+logo ${INPUT_FOLDER} ${SEARCH_TARGET} ${BPDEV} ${THREADS} ${MIN_MEM} ${MAX_MEM} ${KEEPF} ${FORCE}
 
 for subf in $(ls ${INPUT_FOLDER}); do
 
-  ## CHECK: Avoid re-computation
-  if [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 0 ]]; then
-    printf "\n${green}SUCCESS:${normal} computation finished for ${subf}. To re-run include the -f/--force argument."
-    continue
-  elif [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 1 ]]; then
-    rm 10-Blast/${subf}.tsv
-    # Remove results for sample
-    for fld in 11-Sequences 20-Alignment 30-VariantCalling 40-Phasing 50-Haplotypes 60-Integration 70-Fingerprints; do
-      rm -r ${fld}/${subf}
-    done
+  # Check status
+  if [ -f progress.txt ]; then
+    status=$(grep -w ${subf} progress.txt | cut -f 2)
+    if [[ ${status} == "Success" || ${status} == "Failed" ]] && [[ ${FORCE} == 0 ]]; then
+      continue
+    fi
+
+    ## CHECK: Avoid re-computation
+    if [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 0 ]]; then
+      #printf "\n${green}SUCCESS:${normal} computation finished for ${subf}. To re-run include the -f/--force argument."
+      continue
+    elif [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 1 ]]; then
+      # Remove line in progress.txt if exists already
+      if [ $(grep -w ${subf} | wc -l) -eq 1 ]; then
+        grep -wv ${subf} progress.txt > tmp
+        mv tmp progress.txt
+        rm tmp
+      fi
+
+
+      rm 10-Blast/${subf}.tsv
+      # Remove results for sample
+      for fld in 11-Sequences 20-Alignment 30-VariantCalling 40-Phasing 50-Haplotypes 60-Integration 70-Fingerprints; do
+        rm -r ${fld}/${subf}
+      done
+    fi
   fi
 
   ## CHECK: Input in folder
@@ -499,6 +545,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} ]]; then
     printf "\n${red}ERROR:${normal} File ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} missing, please use the \"-e/--extension\" argument if the extension is not \"fasta\"."
     printf "\n${yellow}WARNING:${normal} computation will be skipped.\n"
+    printf "${subf}\tSkipped\tWrong reference extension\n" >> progress.txt
     continue
   fi
 
@@ -506,11 +553,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} || ! -f ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} ]]; then
     printf "\n${red}ERROR:${normal} One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\"."
     printf "\n${yellow}WARNING:${normal} computation will be skipped.\n"
+    printf "${subf}\tSkipped\tWrong reads extension\n" >> progress.txt
     continue
   fi
 
-  date "+start: %d/%m/%Y - %H:%M:%S"
-  printf "\n${blue}Sample:${normal} $subf\n"
+  date "+start time: %H:%M:%S"
+  printf "${blue}Sample:${normal} $subf\n"
 
   ## ------------------------------------
   ## Target recovery from contigs (BLAST)
@@ -522,11 +570,14 @@ for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 10-Blast 11-Sequences/${subf} 01-Logs
   # Blastn
   blastn -query ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
-  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | sort -n -k4 | tail -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
+  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | sort -n -k4 | tail -n 1 | cut -f 13 | sed 's/-//g')" >> 11-Sequences/${subf}/${subf}.fasta
 
   # CHECK: Absent target match (Perhaps, remove small hits!)
   if [ $(cat 11-Sequences/${subf}/${subf}.fasta | wc -l) -lt 1 ]; then
     printf "\n${yellow}WARNING:${normal} No target was found for ${subf}. Computation will be skipped.\n"
+    printf "${subf}\tFailed\tNo target recovered from reference\n" >> progress.txt
+    date "+end time: %d/%m/%Y - %H:%M:%S"
+    echo ""
     continue
   fi
 
@@ -566,6 +617,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # CHECK: Absent R1/R2 for de novo assembly
   if [[ $(zcat 20-Alignment/${subf}/${subf}_R1.fastq.gz | wc -l) -eq 0 || $( zcat 20-Alignment/${subf}/${subf}_R2.fastq.gz | wc -l) -eq 0 ]]; then
     printf "\n${yellow}WARNING:${normal} No target reads were recovered for ${subf}. Computation will be skipped.\n"
+    printf "${subf}\tFailed\tNo reads recovered for target\n" >> progress.txt
+    date "+end time: %d/%m/%Y - %H:%M:%S"
+    echo ""
     continue
   fi
 
@@ -581,6 +635,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   seqtk seq -L ${min_tl} 20-Alignment/${subf}/spades/contigs.fasta > 20-Alignment/${subf}/spades/contigs.seqtk.fasta
   if [ $(grep "^>" 20-Alignment/${subf}/spades/contigs.seqtk.fasta | wc -l) -eq 0 ]; then
     printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n"
+    printf "${subf}\tSkipped\tRecovered target length below minimum length\n" >> progress.txt
+    date "+end time: %d/%m/%Y - %H:%M:%S"
+    echo ""
     continue
   fi
   
@@ -601,6 +658,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Check if hit was not recovered
   if [ $(cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | wc -l) == 0 ]; then
     printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n"
+    printf "${subf}\tSkipped\tRecovered target length below minimum length\n" >> progress.txt
+    date "+end time: %d/%m/%Y - %H:%M:%S"
+    echo ""
     continue
   fi
 
@@ -627,6 +687,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # CHECK: Absent rebuilt BAM
   if [[ ! -f 20-Alignment/${subf}/${subf}.rebuild.sort.bam || ! -f 20-Alignment/${subf}/${subf}.fasta ]]; then
     printf "\n${yellow}}WARNING:${normal} No target reads were recovered for ${subf}. Computation will be skipped.\n"
+    printf "${subf}\tFailed\tNo reads recovered for target\n" >> progress.txt
+    date "+end time: %d/%m/%Y - %H:%M:%S"
+    echo ""
     continue
   fi
 
@@ -662,6 +725,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # CHECK: Absent haplotypes
     if [[ ! -f 40-Phasing/${subf}/${subf}_assembly_h1.fasta || ! -f 40-Phasing/${subf}/${subf}_assembly_h2.fasta ]]; then
       printf "\n${yellow}WARNING:${normal} No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
+      printf "${subf}\tFailed\tNo haplotypes were found\n" >> progress.txt
+      date "+end time: %d/%m/%Y - %H:%M:%S"
+      echo ""
       continue
     fi
 
@@ -695,6 +761,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # CHECK: Absent clean haplotypes
     if [ ! -f 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta ]; then
       printf "\n${yellow}WARNING:${normal} No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
+      printf "${subf}\tSkipped\No haplotypes were recovered\n" > progress.txt
+      date "+end time: %d/%m/%Y - %H:%M:%S"
+      echo ""
       continue
     fi
 
@@ -729,7 +798,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
       # CHECK: Absent kallisto output
       if [ ! -f 60-Integration/${subf}/abundance.tsv ]; then
         printf "\n${yellow}WARNING:${normal} Missing kallisto output for ${subf}. Computation will be skipped.\n"
-        date "end: +%d/%m/%Y - %H:%M:%S"
+        printf "${subf}\tFailed\tKallisto could not determined the haplotype abundances\n" >> progress.txt
+        date "+end time: %d/%m/%Y - %H:%M:%S"
+        echo ""
         continue
       fi
 
@@ -747,7 +818,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
       # CHECK: Absent integration output
       if [ ! -f 60-Integration/${subf}/integration.tsv ]; then
         printf "\n${yellow}WARNING:${normal} Missing integration output for ${subf}. Computation will be skipped.\n"
-        date "end: +%d/%m/%Y - %H:%M:%S"
+        printf "${subf}\tFailed\tIntegration could not be performed\n" >> progress.txt
+        date "+end time: %d/%m/%Y - %H:%M:%S"
+        echo ""
         continue
       fi
 
@@ -793,6 +866,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   fi
 
+  if [ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta ]; then
+    printf "${subf}\tSuccess\tComputation finished\n" >> progress.txt
+  fi
+
   # ----------------- #
   # ExI. Clean folder #
   # ----------------- #
@@ -824,6 +901,7 @@ done
 
 # Final format
 
-date "+FINISH date: +%d/%m/%Y - time: %H:%M:%S"
-
+printf "Finish:"
+date "+    date: +%d/%m/%Y"
+date "+    time: %H:%M:%S"
 printf "\n"
