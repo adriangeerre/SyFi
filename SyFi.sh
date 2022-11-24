@@ -15,6 +15,10 @@ function logo() {
   w=$(tput setaf 231)
   n=$(tput sgr0)
 
+  # Arrays
+  array_keep=("None" "BAMs" "All")
+  array_force=("None" "All" "Skipped" "Failed")
+
   # Variables
   if [ $1 != "help" ]; then
     folder=$1
@@ -23,8 +27,8 @@ function logo() {
     threads=$4
     minmem=$5
     maxmem=$6
-    keepfiles=$7
-    force=$8
+    keepfiles=${array_keep[${7}]}
+    force=${array_force[${8}]}
 
     # Logo
     echo ""
@@ -41,8 +45,8 @@ function logo() {
     echo "    Deviation length: ${lendev}"
     echo "    Threads: ${threads}"
     echo "    Minimum memory: ${minmem} GB"
-    echo "    Minimum memory: ${maxmem} GB"
-    echo "    Keep files: ${force}"
+    echo "    Maximum memory: ${maxmem} GB"
+    echo "    Keep files: ${keepfiles}"
     echo "    Force: ${force}"
     echo ""
     echo "Progress:"
@@ -92,9 +96,9 @@ function usage()
   echo "  -mx | --max_memory       Maximum memory required in GB (default: 8GB)."
   printf "\n"
   echo "# Output options:"
-  echo "  -k  | --keep_files       Keep temporary files [0: none, 1: BAM's, or 2: All] (default: 0)."
-  echo "  -v  | --verbose          Verbose mode [0: none, 1: Steps, or 2: All] (default: 0)."
-  echo "  -f  | --force            Force re-computation of computed samples (default: False)."
+  echo "  -k  | --keep_files       Keep temporary files [0: None, 1: BAM's, or 2: All] (default: 0)."
+  echo "  -v  | --verbose          Verbose mode [0: None 1: Steps, or 2: All] (default: 0)."
+  echo "  -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0)."
   printf "\n"
   echo "# Display:"
   echo "  -h  | --help             Display help."
@@ -205,7 +209,7 @@ while [[ "$1" > 0 ]]; do
       ;;
     -f | --force)
       shift
-      FORCE=1
+      FORCE=$1
       shift
       ;;
     -h | --help)
@@ -240,15 +244,21 @@ function ctrl_c() {
 
 ### Checks
 
-# Input folder
+# Check: Input folder
 if [[ ! -d ${INPUT_FOLDER} ]]; then
   echo "${red}ERROR:${normal} Folder ${INPUT_FOLDER} missing."
   exit
 fi
 
-# Keep file
+# Check: Keep file
 if [[ ! "$KEEPF" =~ ^[0-9]+$ || ${KEEPF} -gt 2 || ${KEEPF} -lt 0 ]]; then
-  echo "${red}ERROR:${normal} Keep temporary files should be a number between 0 and 2 [0: none, 1: BAM's, or 2: All]."
+  echo "${red}ERROR:${normal} Keep temporary files should be a number between 0 and 2 [0: None, 1: BAM's, or 2: All]."
+  exit
+fi
+
+# Check: Force value
+if [[ ! "$FORCE" =~ ^[0-9]+$ || ${FORCE} -gt 3 || ${FORCE} -lt 0 ]]; then
+  echo "${red}ERROR:${normal} Force value should be a number between 0 and 3 [0: None, 1: All, 2: Skipped or 3: Failed]."
   exit
 fi
 
@@ -500,6 +510,34 @@ function fingerPrint() {
   fi
 }
 
+function CleanFiles() {
+  # Variables
+  subf=$1
+  KEEPF=$2
+
+  # Clean folder
+  if [ ${KEEPF} == 0 ]; then
+    rm 20-Alignment/${subf}/${subf}.bam 20-Alignment/${subf}/${subf}.*.bam
+    rm 30-VariantCalling/${subf}/mapped_filtered/*.ba*
+    rm -r 40-Phasing/${subf}/mapped
+  fi
+    if [ ${KEEPF} -lt 2 ]; then
+    # 11-Sequences
+    rm 11-Sequences/${subf}/${subf}.fasta.*
+    # 20-Alignment
+    rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
+    # 30-VariantCalling
+    rm -rf 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/reference  30-VariantCalling/${subf}/variants/tmp_* 30-VariantCalling/${subf}/variants/db_workspace 30-VariantCalling/${subf}/variants/${subf}
+    # 40-Phasing
+    rm -rf 40-Phasing/${subf}/${subf}_reads.txt 
+    # 50-Haplotypes
+    rm 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx
+    # 60-Integration
+    rm -rf 60-Integration/${subf}/abundance.h5 60-Integration/${subf}/run_info.json 60-Integration/${subf}/tmp.tsv
+    # 70-Fingerprints
+    rm -rf 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+  fi
+}
 
 ### Execution
 
@@ -512,25 +550,25 @@ logo ${INPUT_FOLDER} ${SEARCH_TARGET} ${BPDEV} ${THREADS} ${MIN_MEM} ${MAX_MEM} 
 
 for subf in $(ls ${INPUT_FOLDER}); do
 
-  # Check status
+  ## CHECK: Redirect workflow given status and force
   if [ -f progress.txt ]; then
     status=$(grep -w ${subf} progress.txt | cut -f 2)
-    if [[ ${status} == "Success" || ${status} == "Failed" ]] && [[ ${FORCE} == 0 ]]; then
+    if [[ ${status} == "Success" ]] && [[ ${FORCE} != 1 ]]; then
+      continue
+    elif [[ ${status} == "Skipped" ]] && [[ ${FORCE} != 2 ]]; then
+      continue
+    elif [[ ${status} == "Failed" ]] && [[ ${FORCE} != 3 ]]; then
       continue
     fi
 
     ## CHECK: Avoid re-computation
-    if [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 0 ]]; then
-      #printf "\n${green}SUCCESS:${normal} computation finished for ${subf}. To re-run include the -f/--force argument."
-      continue
-    elif [[ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta && ${FORCE} == 1 ]]; then
+    if [[ ${FORCE} != 0 ]]; then
       # Remove line in progress.txt if exists already
-      if [ $(grep -w ${subf} | wc -l) -eq 1 ]; then
+      if [[ $(grep -w ${subf} | wc -l) -eq 1 ]]; then
         grep -wv ${subf} progress.txt > tmp
         mv tmp progress.txt
         rm tmp
       fi
-
 
       rm 10-Blast/${subf}.tsv
       # Remove results for sample
@@ -874,34 +912,13 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # ExI. Clean folder #
   # ----------------- #
 
-  # Clean folder
-  if [ ${KEEPF} == 0 ]; then
-    rm 20-Alignment/${subf}/${subf}.bam 20-Alignment/${subf}/${subf}.*.bam
-    rm 30-VariantCalling/${subf}/mapped_filtered/*.ba*
-    rm -r 40-Phasing/${subf}/mapped
-  fi
-    if [ ${KEEPF} -lt 2 ]; then
-    # 11-Sequences
-    rm 11-Sequences/${subf}/${subf}.fasta.*
-    # 20-Alignment
-    rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
-    # 30-VariantCalling
-    rm -rf 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/reference  30-VariantCalling/${subf}/variants/tmp_* 30-VariantCalling/${subf}/variants/db_workspace 30-VariantCalling/${subf}/variants/${subf}
-    # 40-Phasing
-    rm -rf 40-Phasing/${subf}/${subf}_reads.txt 
-    # 50-Haplotypes
-    rm 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx
-    # 60-Integration
-    rm -rf 60-Integration/${subf}/abundance.h5 60-Integration/${subf}/run_info.json 60-Integration/${subf}/tmp.tsv
-    # 70-Fingerprints
-    rm -rf 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
-  fi
+  CleanFiles ${subf} ${KEEPF}
 
 done
 
 # Final format
 
-printf "Finish:"
-date "+    date: +%d/%m/%Y"
+printf "Finish:\n"
+date "+    date: %d/%m/%Y"
 date "+    time: %H:%M:%S"
 printf "\n"
