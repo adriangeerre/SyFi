@@ -39,7 +39,6 @@ function logo() {
     echo ""
     echo "----------------------------------------------"
     echo "Summary:"
-    date "+    Date: %d/%m/%Y"
     echo "    Folder: ${folder}"
     echo "    Target: ${target}"
     echo "    Deviation length: ${lendev}"
@@ -48,6 +47,10 @@ function logo() {
     echo "    Maximum memory: ${maxmem} GB"
     echo "    Keep files: ${keepfiles}"
     echo "    Force: ${force}"
+    echo ""
+    printf "Start:\n"
+    date "+    date: %d/%m/%Y"
+    date "+    time: %H:%M:%S"
     echo ""
     echo "Progress:"
     checkProgress ${folder}
@@ -512,30 +515,85 @@ function fingerPrint() {
 
 function CleanFiles() {
   # Variables
-  subf=$1
-  KEEPF=$2
+  mode=$1
+  subf=$2
+  KEEPF=$3
 
   # Clean folder
-  if [ ${KEEPF} == 0 ]; then
-    rm 20-Alignment/${subf}/${subf}.bam 20-Alignment/${subf}/${subf}.*.bam
-    rm 30-VariantCalling/${subf}/mapped_filtered/*.ba*
-    rm -r 40-Phasing/${subf}/mapped
-  fi
+  # MODE: Final
+  if [ ${mode} == "Final" ]; then
+    if [ ${KEEPF} -eq 0 ]; then
+      # BAMs
+      rm -rf 20-Alignment/${subf}/${subf}.bam 20-Alignment/${subf}/${subf}.*.bam
+      rm -rf 30-VariantCalling/${subf}/mapped_filtered/*.ba*
+      rm -rf 40-Phasing/${subf}/mapped
+    fi
     if [ ${KEEPF} -lt 2 ]; then
-    # 11-Sequences
-    rm 11-Sequences/${subf}/${subf}.fasta.*
-    # 20-Alignment
-    rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
-    # 30-VariantCalling
-    rm -rf 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/reference  30-VariantCalling/${subf}/variants/tmp_* 30-VariantCalling/${subf}/variants/db_workspace 30-VariantCalling/${subf}/variants/${subf}
-    # 40-Phasing
-    rm -rf 40-Phasing/${subf}/${subf}_reads.txt 
-    # 50-Haplotypes
-    rm 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx
-    # 60-Integration
-    rm -rf 60-Integration/${subf}/abundance.h5 60-Integration/${subf}/run_info.json 60-Integration/${subf}/tmp.tsv
-    # 70-Fingerprints
-    rm -rf 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+      # 11-Sequences
+      rm -rf 11-Sequences/${subf}/${subf}.fasta.*
+      # 20-Alignment
+      rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
+      # 30-VariantCalling
+      rm -rf 30-VariantCalling/${subf}/genotyped 30-VariantCalling/${subf}/mapped_filtered 30-VariantCalling/${subf}/reference  30-VariantCalling/${subf}/variants/tmp_* 30-VariantCalling/${subf}/variants/db_workspace 30-VariantCalling/${subf}/variants/${subf}
+      # 40-Phasing
+      rm -rf 40-Phasing/${subf}/${subf}_reads.txt 
+      # 50-Haplotypes
+      rm -rf 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx
+      # 60-Integration
+      rm -rf 60-Integration/${subf}/abundance.h5 60-Integration/${subf}/run_info.json 60-Integration/${subf}/tmp.tsv
+      # 70-Fingerprints
+      rm -rf 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+    fi
+  # MODE: ReadRecov
+  elif [ ${mode} == "ReadRecov" ]; then
+    if [ ${KEEPF} -eq 0 ]; then
+      # BAMs
+      rm -rf 20-Alignment/${subf}/${subf}.bam 20-Alignment/${subf}/${subf}.*.bam
+    fi
+    if [ ${KEEPF} -lt 2 ]; then
+      # 11-Sequences
+      rm -rf 11-Sequences/${subf}/${subf}.fasta.*
+      # 20-Alignment
+      rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
+    fi
+  # MODE: Phasing
+  elif [ ${mode} == "Phasing" ]; then
+    if [ ${KEEPF} -eq 0 ]; then
+      # BAMs
+      rm -rf 30-VariantCalling/${subf}/mapped_filtered/*.ba*
+      rm -rf 40-Phasing/${subf}/mapped
+    fi
+    if [ ${KEEPF} -lt 2 ]; then
+      # 11-Sequences
+      rm -rf 11-Sequences/${subf}/${subf}.fasta.*
+      # 20-Alignment
+      rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
+      # 30-VariantCalling
+      rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
+      # 40-Phasing
+      rm -rf 40-Phasing/${subf}/${subf}_reads.txt
+    fi
+  # MODE: Integration
+  elif [ ${mode} == "Integration" ]; then
+    if [ ${KEEPF} -eq 0 ]; then
+      # BAMs
+      rm -rf 30-VariantCalling/${subf}/mapped_filtered/*.ba*
+      rm -rf 40-Phasing/${subf}/mapped
+    fi
+    if [ ${KEEPF} -lt 2 ]; then
+      # 11-Sequences
+      rm -rf 11-Sequences/${subf}/${subf}.fasta.*
+      # 20-Alignment
+      rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
+      # 30-VariantCalling
+      rm -rf 20-Alignment/${subf}/${subf}.sam 20-Alignment/${subf}/${subf}.dict 20-Alignment/${subf}/${subf}.fasta.* 20-Alignment/${subf}/spades 20-Alignment/${subf}/${subf}.rebuild.sam
+      # 40-Phasing
+      rm -rf 40-Phasing/${subf}/${subf}_reads.txt
+      # 50-Haplotypes
+      rm -rf 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta.idx
+      # 60-Integration
+      rm -rf 60-Integration/${subf}/abundance.h5 60-Integration/${subf}/run_info.json 60-Integration/${subf}/tmp.tsv
+    fi
   fi
 }
 
@@ -561,19 +619,18 @@ for subf in $(ls ${INPUT_FOLDER}); do
       continue
     fi
 
-    ## CHECK: Avoid re-computation
+    # CHECK: Avoid re-computation
     if [[ ${FORCE} != 0 ]]; then
       # Remove line in progress.txt if exists already
-      if [[ $(grep -w ${subf} | wc -l) -eq 1 ]]; then
+      if [[ $(grep -w ${subf} progress.txt | wc -l) -eq 1 ]]; then
         grep -wv ${subf} progress.txt > tmp
         mv tmp progress.txt
-        rm tmp
       fi
 
       rm 10-Blast/${subf}.tsv
       # Remove results for sample
       for fld in 11-Sequences 20-Alignment 30-VariantCalling 40-Phasing 50-Haplotypes 60-Integration 70-Fingerprints; do
-        rm -r ${fld}/${subf}
+        rm -rf ${fld}/${subf}
       done
     fi
   fi
@@ -656,6 +713,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   if [[ $(zcat 20-Alignment/${subf}/${subf}_R1.fastq.gz | wc -l) -eq 0 || $( zcat 20-Alignment/${subf}/${subf}_R2.fastq.gz | wc -l) -eq 0 ]]; then
     printf "\n${yellow}WARNING:${normal} No target reads were recovered for ${subf}. Computation will be skipped.\n"
     printf "${subf}\tFailed\tNo reads recovered for target\n" >> progress.txt
+    # Clean files/folders
+    CleanFiles ${subf} ${KEEPF} "ReadRecov"
+    # Date
     date "+end time: %d/%m/%Y - %H:%M:%S"
     echo ""
     continue
@@ -726,6 +786,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
   if [[ ! -f 20-Alignment/${subf}/${subf}.rebuild.sort.bam || ! -f 20-Alignment/${subf}/${subf}.fasta ]]; then
     printf "\n${yellow}}WARNING:${normal} No target reads were recovered for ${subf}. Computation will be skipped.\n"
     printf "${subf}\tFailed\tNo reads recovered for target\n" >> progress.txt
+    # Clean files/folders
+    CleanFiles ${subf} ${KEEPF} "ReadRecov"
+    # Date
     date "+end time: %d/%m/%Y - %H:%M:%S"
     echo ""
     continue
@@ -764,6 +827,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
     if [[ ! -f 40-Phasing/${subf}/${subf}_assembly_h1.fasta || ! -f 40-Phasing/${subf}/${subf}_assembly_h2.fasta ]]; then
       printf "\n${yellow}WARNING:${normal} No haplotypes were recovered for ${subf}. Computation will be skipped.\n"
       printf "${subf}\tFailed\tNo haplotypes were found\n" >> progress.txt
+      # Clean files/folders
+      CleanFiles ${subf} ${KEEPF} "Phasing"
+      # Date
       date "+end time: %d/%m/%Y - %H:%M:%S"
       echo ""
       continue
@@ -837,6 +903,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
       if [ ! -f 60-Integration/${subf}/abundance.tsv ]; then
         printf "\n${yellow}WARNING:${normal} Missing kallisto output for ${subf}. Computation will be skipped.\n"
         printf "${subf}\tFailed\tKallisto could not determined the haplotype abundances\n" >> progress.txt
+        # Clean files/folders
+        CleanFiles ${subf} ${KEEPF} "Integration"
+        # Date
         date "+end time: %d/%m/%Y - %H:%M:%S"
         echo ""
         continue
@@ -857,6 +926,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
       if [ ! -f 60-Integration/${subf}/integration.tsv ]; then
         printf "\n${yellow}WARNING:${normal} Missing integration output for ${subf}. Computation will be skipped.\n"
         printf "${subf}\tFailed\tIntegration could not be performed\n" >> progress.txt
+        # Clean files/folders
+        CleanFiles ${subf} ${KEEPF} "Integration"
+        # Date
         date "+end time: %d/%m/%Y - %H:%M:%S"
         echo ""
         continue
@@ -912,7 +984,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # ExI. Clean folder #
   # ----------------- #
 
-  CleanFiles ${subf} ${KEEPF}
+  CleanFiles ${subf} ${KEEPF} "Final"
 
 done
 
