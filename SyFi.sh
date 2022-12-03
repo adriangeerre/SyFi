@@ -652,6 +652,14 @@ for subf in $(ls ${INPUT_FOLDER}); do
     continue
   fi
 
+  # Check len deviation
+  tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
+  min_tl=$((tl-${BPDEV}))
+  if [ ${min_tl} -le 0 ]; then
+    printf "${red}ERROR:${normal} length deviation is equal or larger than the target length (target length: ${tl}).\n\n"
+    exit
+  fi
+
   date "+start time: %H:%M:%S"
   printf "${blue}Sample:${normal} $subf\n"
 
@@ -728,8 +736,6 @@ for subf in $(ls ${INPUT_FOLDER}); do
 	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM} &>> 01-Logs/log_${subf}.txt
 
   # Size select SPAdes recovered target
-  tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
-  min_tl=$((tl-${BPDEV}))
   seqtk seq -L ${min_tl} 20-Alignment/${subf}/spades/contigs.fasta > 20-Alignment/${subf}/spades/contigs.seqtk.fasta
   if [ $(grep "^>" 20-Alignment/${subf}/spades/contigs.seqtk.fasta | wc -l) -eq 0 ]; then
     printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n"
@@ -837,8 +843,6 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
     # Haplotype length correction: remove short matches
     mkdir -p 50-Haplotypes/${subf}
-    tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
-    min_tl=$((tl-${BPDEV}))
     seqtk seq -L ${min_tl} <(cat 40-Phasing/${subf}/${subf}_assembly_h*.fasta) > 50-Haplotypes/${subf}/${subf}_haplotypes.fasta 
 
     # Rename headers

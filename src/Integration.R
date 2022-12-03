@@ -30,7 +30,7 @@ if (opt$mode == "unique") {
   
   # Integration
   # -----------
-  inte <- data.frame(target_id = "seq_h1", total_length=cnum$Target_length, target_length=cnum$Target_length, eff_length="-", est_counts="-", tpm="-", ratio=1, ratio_round=1, copy_number=cnum$Copy_number, haplotype_divisible=1, proportion=cnum$Copy_number, proportion_round=round(as.numeric(cnum$Copy_number)), final_output=round(as.numeric(cnum$Copy_number)), per_haplotype=round(as.numeric(cnum$Copy_number)))
+  inte <- data.frame(target_id = "seq_h1", total_length=cnum$Target_length, target_length=cnum$Target_length, eff_length="-", est_counts="-", tpm="-", ratio=1, ratio_round=1, copy_number=cnum$Copy_number, haplotype_divisible=1, proportion=cnum$Copy_number, proportion_round=round(as.numeric(cnum$Copy_number)), final_output=round(as.numeric(cnum$Copy_number)), per_haplotype=round(as.numeric(cnum$Copy_number)), adjusted_values = "No")
   
   # Save
   # ----
@@ -40,8 +40,8 @@ if (opt$mode == "unique") {
 } else if (opt$mode == "multiple") {
   # Data
   # ----
-  abun <- read.delim(r, header=T)
-  cnum <- read.delim(c, header=T)
+  abun <- read.delim(opt$haplo_ratio, header=T)
+  cnum <- read.delim(opt$copy_number, header=T)
   
   # Integration
   # -----------
@@ -55,9 +55,12 @@ if (opt$mode == "unique") {
   abun$proportion_round <- round(abun$proportion)
   abun$final_output <- unique(abun$proportion_round) * abun$haplotype_divisible
   abun$per_haplotype <- unique(abun$proportion_round) * abun$ratio_round
+  abun$adjusted_values <- "No"
   
   # Check and recompute, if necessary
+  enter_while = FALSE
   while (unique(abun$proportion) > 0.5) {
+    enter_while = TRUE
     # Remove haplotype with lowest ratio
     min_ratio <- min(abun$ratio)
     if (nrow(abun) <= 1) {
@@ -72,15 +75,36 @@ if (opt$mode == "unique") {
     abun$proportion_round <- round(abun$proportion)
     abun$final_output <- unique(abun$proportion_round) * abun$haplotype_divisible
     abun$per_haplotype <- unique(abun$proportion_round) * abun$ratio_round
+    abun$adjusted_values <- "No"
   }
   
-  # Exec cleaning
+  if (enter_while == FALSE) {
+    # Select maximum ratio haplotype
+    max_ratio <- max(abun$ratio)
+    abun <- abun[abun$ratio == max_ratio,]
+    
+    # Transform ratio to 1
+    abun$ratio <- 1
+    abun$ratio_round <- 1
+    
+    # Transform copy number to 1 if below, otherwise leave it
+    if (abun$copy_number < 1) {
+      abun$copy_number <- 1
+    }
+    
+    # Recompute values
+    abun$haplotype_divisible <- sum(abun$ratio_round)
+    abun$proportion <- abun$copy_number / abun$haplotype_divisible
+    abun$proportion_round <- round(abun$proportion)
+    abun$final_output <- unique(abun$proportion_round) * abun$haplotype_divisible
+    abun$per_haplotype <- unique(abun$proportion_round) * abun$ratio_round
+    abun$adjusted_values <- "Yes"
+  }
+  
+  # Check and save
   if (unique(abun$proportion) > 0.5) {
     # Save
     #-----
     write.table(abun, file=paste("60-Integration/", opt$i, "/integration.tsv", sep=""), quote=F, col.names=T, row.names=F, sep="\t")
-  } else {
-    # Report issue (WHAT TO DO HERE!?)
-    print("Integration returns empty abundance table!")
   }
 }

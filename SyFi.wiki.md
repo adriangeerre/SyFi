@@ -81,4 +81,6 @@ The situations are recovered in the file *progress.txt* which it is used to defi
 
 **Integration**
 
-I has an issue were the integration failed because the resulting integration file was empty. This happened when I have multiple haplotypes. The issue was a bad while loop in *Integration.R*. 
+I has an issue were the integration failed because the resulting integration file was empty. This happened when I have multiple haplotypes. The issue was a bad while loop in *Integration.R*.
+
+After that, I found out that the ratio could be low (<0.5) causing values to be odd. Therefore, when we encounter a ratio that it is below 1 we automatically upgrade it to 1 because if we are able to compute both the abundance and the copy number is because, at least, there is 1 target copy. However, to inform of this modification, we added the column *adjusted_values* (Yes|No) to determine if the ratio was below 1 (when Yes).
