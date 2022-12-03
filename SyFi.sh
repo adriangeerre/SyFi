@@ -247,6 +247,18 @@ function ctrl_c() {
 
 ### Checks
 
+# Check: Software dependencies
+software=(blastn bwa-mem2 samtools gzip spades.py seqtk seqkit kallisto Rscript gatk plot-bamstats bcftools plot-vcfstats)
+for pckg in ${software[@]}
+do 
+  type ${pckg} 2> /dev/null 1>&2 
+  if [ $? != 0 ]
+  then
+    printf "\n${red}ERROR:${normal} ${pckg} missing. Install or activate SyFi conda environment.\n\n"
+    exit
+fi
+done
+
 # Check: Input folder
 if [[ ! -d ${INPUT_FOLDER} ]]; then
   printf "\n${red}ERROR:${normal} Folder ${INPUT_FOLDER} missing.\n\n"
@@ -265,7 +277,7 @@ if [[ ! "$FORCE" =~ ^[0-9]+$ || ${FORCE} -gt 3 || ${FORCE} -lt 0 ]]; then
   exit
 fi
 
-# Check: len deviation above zero
+# Check: Length deviation above zero
   tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
   min_tl=$((tl-${BPDEV}))
   if [ ${min_tl} -le 0 ]; then
