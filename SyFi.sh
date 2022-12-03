@@ -249,21 +249,29 @@ function ctrl_c() {
 
 # Check: Input folder
 if [[ ! -d ${INPUT_FOLDER} ]]; then
-  echo "${red}ERROR:${normal} Folder ${INPUT_FOLDER} missing."
+  printf "\n${red}ERROR:${normal} Folder ${INPUT_FOLDER} missing.\n\n"
   exit
 fi
 
 # Check: Keep file
 if [[ ! "$KEEPF" =~ ^[0-9]+$ || ${KEEPF} -gt 2 || ${KEEPF} -lt 0 ]]; then
-  echo "${red}ERROR:${normal} Keep temporary files should be a number between 0 and 2 [0: None, 1: BAM's, or 2: All]."
+  printf "\n${red}ERROR:${normal} Keep temporary files should be a number between 0 and 2 [0: None, 1: BAM's, or 2: All].\n\n"
   exit
 fi
 
 # Check: Force value
 if [[ ! "$FORCE" =~ ^[0-9]+$ || ${FORCE} -gt 3 || ${FORCE} -lt 0 ]]; then
-  echo "${red}ERROR:${normal} Force value should be a number between 0 and 3 [0: None, 1: All, 2: Skipped or 3: Failed]."
+  printf "\n${red}ERROR:${normal} Force value should be a number between 0 and 3 [0: None, 1: All, 2: Skipped or 3: Failed].\n\n"
   exit
 fi
+
+# Check: len deviation above zero
+  tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
+  min_tl=$((tl-${BPDEV}))
+  if [ ${min_tl} -le 0 ]; then
+    printf "\n${red}ERROR:${normal} length deviation is equal or larger than the target length (target length: ${tl}).\n\n"
+    exit
+  fi
 
 # Check: progress table
 function checkProgress() {
@@ -650,14 +658,6 @@ for subf in $(ls ${INPUT_FOLDER}); do
     printf "\n${yellow}WARNING:${normal} computation will be skipped.\n"
     printf "${subf}\tSkipped\tWrong reads extension\n" >> progress.txt
     continue
-  fi
-
-  # Check len deviation
-  tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
-  min_tl=$((tl-${BPDEV}))
-  if [ ${min_tl} -le 0 ]; then
-    printf "${red}ERROR:${normal} length deviation is equal or larger than the target length (target length: ${tl}).\n\n"
-    exit
   fi
 
   date "+start time: %H:%M:%S"
