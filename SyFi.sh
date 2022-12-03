@@ -316,8 +316,6 @@ function variantCalling() {
   printf "\n"
   echo "Performing Variant Calling"
 
-  # Kmer plots (Avoided at the moment)
-
   # Mark duplicates (Mapping is already done)
   printf "\n"
   echo "Mark BAM duplicates"
@@ -348,9 +346,6 @@ function markDuplicates() {
 
   # Execution
   gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/mapped_filtered/${sample}.filtered.bam -M ${output_dir}/mapped_filtered/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}/mapped_filtered
-
-  # Index BAM
-  # samtools index -@ ${threads} -b ${filtered_bam}
 
   # Plot BAM
   samtools stats -d ${bam_file} > ${output_fn}
@@ -419,7 +414,7 @@ function jointGenotype() {
   # bcftools query -l ${output_vcf}
 
   bcftools stats -F ${reference_fasta} -s- ${output_vcf} > ${comp_fn}
-  plot-vcfstats -p ${plot_dir} -s ${comp_fn} # (ERROR HERE!)
+  plot-vcfstats -p ${plot_dir} -s ${comp_fn}
 }
 
 # FUNCTION: Copy Number
@@ -810,12 +805,6 @@ for subf in $(ls ${INPUT_FOLDER}); do
   printf "\n\n### Variant calling ###\n\n" >> 01-Logs/log_${subf}.txt
   variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM} &>> 01-Logs/log_${subf}.txt
 
-  # CHECK: Absent variant file
-  #if [ ! -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz ]; then
-  #  printf "\n${yellow}WARNING:${normal} VCF file missing for ${subf}. Computation will be skipped.\n"
-  #  continue
-  #fi
-
   # CHECK: No variants recovered
   if [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) != 0 ]]; then
     # MULTIPLE HAPLOTYPES
@@ -941,8 +930,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
       # Fingerprint
       fingerPrint 'multiple' ${subf}
     fi
-    
-  else
+  elif [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 ]]; then
     # ONE HAPLOTYPE
 
     printf "Abundance ratio [Avoid]; "
@@ -978,6 +966,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # Fingerprint
     fingerPrint 'unique' ${subf}
 
+  else
+    # Absent variant file
+    printf "\n${yellow}WARNING:${normal} VCF file missing for ${subf}. Computation will be skipped.\n"
+    continue
   fi
 
   if [ -f 70-Fingerprints/${subf}/${subf}_all_haplotypes.fasta ]; then
