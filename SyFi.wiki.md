@@ -53,12 +53,12 @@ ___
 
     # Computation:
     -t  | --threads          Number of threads (default: 1).
-    -mn | --min_memory       Minimum memory required in GB(default: 4GB).
+    -mn | --min_memory       Minimum memory required in GB (default: 4GB).
     -mx | --max_memory       Maximum memory required in GB (default: 8GB).
 
     # Output options:
     -k  | --keep_files       Keep temporary files [0: None, 1: BAM's, or 2: All] (default: 0).
-    -v  | --verbose          Verbose mode [0: None 1: Steps, or 2: All] (default: 0).
+    -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
     -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0).
 
     # Display:

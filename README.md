@@ -83,10 +83,12 @@ echo 'export PATH="$SOFTWARE_FOLDER_PATH/SyFi_<version>/bin:$PATH"' >> $HOME/.ba
 ```
 ./SyFi.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>
 
-# Required:
+REQUIRED:
+# Input
   -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>.
   -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S.
 
+OPTIONAL:
 # Haplotype deviation:
   -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp).
 
@@ -96,13 +98,13 @@ echo 'export PATH="$SOFTWARE_FOLDER_PATH/SyFi_<version>/bin:$PATH"' >> $HOME/.ba
 
 # Computation:
   -t  | --threads          Number of threads (default: 1).
-  -mn | --min_memory       Minimum memory required (default: 4GB).
-  -mx | --max_memory       Maximum memory required (default: 8GB).
+  -mn | --min_memory       Minimum memory required in GB (default: 4GB).
+  -mx | --max_memory       Maximum memory required in GB (default: 8GB).
 
 # Output options:
-  -k  | --keep_files       Keep temporary files [0: none, 1: BAM's, or 2: All] (default: 0).
-  -v  | --verbose          Verbose mode [0: none, 1: Steps, or 2: All] (default: 0).
-  -f  | --force            Force re-computation of computed samples (default: False).
+  -k  | --keep_files       Keep temporary files [0: None, 1: BAM's, or 2: All] (default: 0).
+  -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
+  -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0).
 
 # Display:
   -h  | --help             Display help.
@@ -112,7 +114,6 @@ echo 'export PATH="$SOFTWARE_FOLDER_PATH/SyFi_<version>/bin:$PATH"' >> $HOME/.ba
 
 ### Tips and tricks
 
-**Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example by using Blast. This is because the reference/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations.
+**Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example, by using Blast. This is because the genome/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations. In other words, the consensus sequence "ACGTACGT" might be coming from a) "ACGTACGT" and b) "ACCTACGT" reads in the population. Given that, the "G/C" variant is masked when obtaining the consesus genome/MAG (in this case we have a G), the direct count of 16S haplotypes (in this case 1; a) from the reference could be different that the population 16S haplotypes (in this case 2; a and b).
 
-The option "-f" should always placed last!
-Low quality genomes could be skipped because of: missing or incomplete targets.
+**Important**: Low quality genomes could be skipped because of: missing or incomplete targets.

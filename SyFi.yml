@@ -1,4 +1,4 @@
-name: GijsPipeline2
+name: SyFi
 channels:
   - bioconda
   - conda-forge
