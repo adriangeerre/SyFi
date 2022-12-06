@@ -170,7 +170,7 @@ INTEGRATION=$(echo ${SYFI_BASE}/src/Integration.R)
 
 # display usage if 
 if [[ $# -lt 4  && $1 != "-h" && $1 != "--help" && $1 != "-c" && $1 != "--citation" && $1 != "--folder_structure" ]]; then
-  echo "\n${red}ERROR:${normal} You must provided at least the assembly and alignment files."
+  printf "\n${red}ERROR:${normal} You must provided at least the assembly and alignment files.\n"
   usage
   exit 2
 fi
