@@ -34,10 +34,10 @@ function logo() {
 
     # Logo
     echo ""
-    echo "${w}/¯¯¯¯/|¯¯¯| |¯¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${n}"
-    echo "${w}\____\|___| '\__  \|   _||    |\___||_/|  |\_|${n}"
-    echo "${w}|¯¯¯¯|\  ¯¯\    |     |  |    ¯¯|   |¯\|  |/¯|${n}"
-    echo "${w}|____|/___/     /____/   |___|¯¯    |________|${n}"
+    echo "${w}/¯¯¯¯/|¯¯¯| |¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${n}"
+    echo "${w}\____\|___| '\_  \|   _||    |\___||_/|  |\_|${n}"
+    echo "${w}|¯¯¯¯|\  ¯¯\   |     |  |    ¯¯|   |¯\|  |/¯|${n}"
+    echo "${w}|____|/___/    /____/   |___|¯¯    |________|${n}"
     echo ""
     echo "----------------------------------------------"
     echo "Summary:"
@@ -62,10 +62,10 @@ function logo() {
   elif [[ $8 != 0 ]]; then
     # Logo
     echo ""
-    echo "${w}/¯¯¯¯/|¯¯¯| |¯¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${n}"
-    echo "${w}\____\|___| '\__  \|   _||    |\___||_/|  |\_|${n}"
-    echo "${w}|¯¯¯¯|\  ¯¯\    |     |  |    ¯¯|   |¯\|  |/¯|${n}"
-    echo "${w}|____|/___/     /____/   |___|¯¯    |________|${n}"
+    echo "${w}/¯¯¯¯/|¯¯¯| |¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${n}"
+    echo "${w}\____\|___| '\_  \|   _||    |\___||_/|  |\_|${n}"
+    echo "${w}|¯¯¯¯|\  ¯¯\   |     |  |    ¯¯|   |¯\|  |/¯|${n}"
+    echo "${w}|____|/___/    /____/   |___|¯¯    |________|${n}"
     echo ""
   fi
 }
@@ -631,6 +631,17 @@ logo ${INPUT_FOLDER} ${SEARCH_TARGET} ${BPDEV} ${THREADS} ${MIN_MEM} ${MAX_MEM} 
 
 for subf in $(ls ${INPUT_FOLDER}); do
 
+  ## CHECK: Log file
+  if [[ -f 01-Logs/log_${subf}.txt ]]; then
+    # Remove old log file
+    rm -rf 01-Logs/log_${subf}.txt
+    touch 01-Logs/log_${subf}.txt
+  else
+    # Touch Log File
+    mkdir -p 01-Logs
+    touch 01-Logs/log_${subf}.txt
+  fi
+  
   ## CHECK: Redirect workflow given status and force
   if [ -f progress.txt ]; then
     status=$(grep -w ${subf} progress.txt | cut -f 2)
@@ -639,6 +650,8 @@ for subf in $(ls ${INPUT_FOLDER}); do
     elif [[ ${status} == "Skipped" ]] && [[ ${FORCE} != 2 ]]; then
       continue
     elif [[ ${status} == "Failed" ]] && [[ ${FORCE} != 3 ]]; then
+      continue
+    elif [[ ${status} == "" ]] && [[ ${FORCE} != 0 ]]; then
       continue
     fi
 
@@ -656,11 +669,6 @@ for subf in $(ls ${INPUT_FOLDER}); do
         rm -rf ${fld}/${subf}
       done
     fi
-  fi
-
-  ## CHECK: Remove log file
-  if [[ -f 01-Logs/log_${subf}.txt ]]; then
-    rm -rf 01-Logs/log_${subf}.txt
   fi
 
   ## CHECK: Input in folder
@@ -690,10 +698,10 @@ for subf in $(ls ${INPUT_FOLDER}); do
   if [ ${VERBOSE} -eq 2 ]; then printf "Performing: Mapping; "; fi
 
   # Create folder
-  mkdir -p 10-Blast 11-Sequences/${subf} 01-Logs
+  mkdir -p 10-Blast 11-Sequences/${subf}
   # Blastn
   blastn -query ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} -subject ${SEARCH_TARGET} -strand both -outfmt "6 std qseq" > 10-Blast/${subf}.tsv
-  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | sort -n -k4 | tail -n 1 | cut -f 13 | sed 's/-//g')" >> 11-Sequences/${subf}/${subf}.fasta
+  printf ">${subf}\n$(cat 10-Blast/${subf}.tsv | sort -n -k4 | tail -n 1 | cut -f 13 | sed 's/-//g')" > 11-Sequences/${subf}/${subf}.fasta
 
   # CHECK: Absent target match (Perhaps, remove small hits!)
   if [ $(cat 11-Sequences/${subf}/${subf}.fasta | wc -l) -lt 1 ]; then

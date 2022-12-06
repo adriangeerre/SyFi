@@ -84,3 +84,7 @@ The situations are recovered in the file *progress.txt* which it is used to defi
 I has an issue were the integration failed because the resulting integration file was empty. This happened when I have multiple haplotypes. The issue was a bad while loop in *Integration.R*.
 
 After that, I found out that the ratio could be low (<0.5) causing values to be odd. Therefore, when we encounter a ratio that it is below 1 we automatically upgrade it to 1 because if we are able to compute both the abundance and the copy number is because, at least, there is 1 target copy. However, to inform of this modification, we added the column *adjusted_values* (Yes|No) to determine if the ratio was below 1 (when Yes).
+
+**Modification of progress.txt**
+
+For the moment, the file *progress.txt* is not hidden. That means that the user could modify the file, affecting the execution of the software. This is a double-side sword because users can take advantage of this file to force re-computation of samples but at the same time, if they are not good enough, there modification can cause issues. For example, if you have run a sample through SyFi and later on you remove the corresponding line in *progress.txt*, the sample will be re-computed but the previous files will not be erased. This might cause, issues like files with multiple lines and intermediate errors that will end in Skipped or Failed outcomes.

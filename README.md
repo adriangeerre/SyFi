@@ -117,3 +117,5 @@ OPTIONAL:
 **Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example, by using Blast. This is because the genome/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations. In other words, the consensus sequence "ACGTACGT" might be coming from a) "ACGTACGT" and b) "ACCTACGT" reads in the population. Given that, the "G/C" variant is masked when obtaining the consesus genome/MAG (in this case we have a G), the direct count of 16S haplotypes (in this case 1; a) from the reference could be different that the population 16S haplotypes (in this case 2; a and b).
 
 **Important**: Low quality genomes could be skipped because of: missing or incomplete targets.
+
+**Important**: The file "progress.txt" contains the information for the software to track the computation, the removal of the file will provoke the re-run of all samples even if they were finished (success).
