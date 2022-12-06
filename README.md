@@ -75,7 +75,7 @@ Download the latest package release. Please, modify the code with your own folde
 cd $SOFTWARE_FOLDER_PATH
 wget ...
 tar -xvzf latest_release.tar.gz
-echo 'export PATH="$SOFTWARE_FOLDER_PATH/SyFi_<version>/bin:$PATH"' >> $HOME/.bashrc
+echo 'export PATH="$SOFTWARE_FOLDER_PATH/SyFi_<version>/:$PATH"' >> $HOME/.bashrc
 ```
 
 ### Usage
@@ -111,6 +111,27 @@ OPTIONAL:
   -c  | --citation         Display citation.
   --folder_structure       Display required folder structure.
 ```
+
+### Input
+
+SyFi assumes that the genomes and reads are organized in sub-folders inside of the input folder (-i | --input_folder). Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz). 
+
+```
+For example:
+
+  input_folder/
+            └── strain_1
+                ├── strain_1_R1.fastq.gz
+                ├── strain_1_R2.fastq.gz
+                └── strain_1.fasta
+            └── strain_2
+                ├── strain_2_R1.fastq.gz
+                ├── strain_2_R2.fastq.gz
+                └── strain_2.fasta
+
+```
+
+SyFi loops through the samples of the folder and runs the steps in sequential order. It will run each sample one time and categorize it in *Success*, *Skipped* or *Failed*. Once, it runs over all samples, the option "-f | --force" must be used to re-run the sample through SyFi steps.
 
 ### Tips and tricks
 
