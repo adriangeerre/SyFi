@@ -140,6 +140,8 @@ function citation()
   printf "\n"
 }
 
+### Variables
+
 # Colors
 red=$(tput setaf 1)
 yellow=$(tput setaf 220)
@@ -158,9 +160,17 @@ FORCE=0
 KEEPF=0
 VERBOSE=2
 
+# Define software path
+SYFI_BASE=$(/usr/bin/dirname $(/usr/bin/realpath ${0}))
+GENOME_PHASE=$(echo ${SYFI_BASE}/src/genome_phase.sh)
+FILTER_HAPLOTYPES=$(echo ${SYFI_BASE}/src/filterHaplotypes.R)
+INTEGRATION=$(echo ${SYFI_BASE}/src/Integration.R)
+
+### Parameters
+
 # display usage if 
 if [[ $# -lt 4  && $1 != "-h" && $1 != "--help" && $1 != "-c" && $1 != "--citation" && $1 != "--folder_structure" ]]; then
-  echo "${red}ERROR:${normal} You must provided at least the assembly and alignment files."
+  echo "\n${red}ERROR:${normal} You must provided at least the assembly and alignment files."
   usage
   exit 2
 fi
@@ -849,7 +859,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
     # Phasing
     printf "\n\n### Phasing ###\n\n" >> 01-Logs/log_${subf}.txt
-    bash 00-Scripts/genome_phase.sh -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment -o 40-Phasing/${subf} &>> 01-Logs/log_${subf}.txt
+    bash ${GENOME_PHASE} -s ${subf} -t ${THREADS} -r 20-Alignment/${subf}/${subf}.fasta -v 30-VariantCalling/${subf}/variants/${subf}.vcf.gz -i 20-Alignment -o 40-Phasing/${subf} &>> 01-Logs/log_${subf}.txt
 
     # CHECK: Absent haplotypes
     if [[ ! -f 40-Phasing/${subf}/${subf}_assembly_h1.fasta || ! -f 40-Phasing/${subf}/${subf}_assembly_h2.fasta ]]; then
@@ -912,7 +922,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
       # Filter haplotypes
       cp 60-Integration/${subf}/abundance.tsv 60-Integration/${subf}/abundance.orig.tsv
-      Rscript 00-Scripts/filterHaplotypes.R -i 60-Integration/${subf}/abundance.tsv &>> 01-Logs/log_${subf}.txt
+      Rscript ${FILTER_HAPLOTYPES} -i 60-Integration/${subf}/abundance.tsv &>> 01-Logs/log_${subf}.txt
 
       # --------------- #
       # II. Copy Number #
@@ -942,7 +952,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
       printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
 
       # Integrate step I and II
-      Rscript 00-Scripts/Integration.R -r 60-Integration/${subf}/abundance.tsv -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m "multiple" &>> 01-Logs/log_${subf}.txt
+      Rscript ${INTEGRATION} -r 60-Integration/${subf}/abundance.tsv -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m "multiple" &>> 01-Logs/log_${subf}.txt
 
       # ---------------- #
       # IV. Fingerprints #
