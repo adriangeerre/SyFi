@@ -66,6 +66,14 @@ ___
     -c  | --citation         Display citation.
     --folder_structure       Display required folder structure.
 
+### Length deviation
+
+Explain here how it works and why it is implemented ...
+
+### Ratio deviation (cutoff)
+
+...
+
 ### Potential situations
 
 When running SyFi you might encounter different situations for your strains:

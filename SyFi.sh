@@ -21,16 +21,17 @@ function logo() {
   array_force=("None" "All" "Skipped" "Failed")
 
   # Variables
-  if [[ $1 != "help" && $8 != 0 ]]; then
+  if [[ $1 != "help" && $9 != 0 ]]; then
     folder=$1
     target=$2
     lendev=$3
-    threads=$4
-    minmem=$5
-    maxmem=$6
-    keepfiles=${array_keep[${7}]}
-    verbose=${array_keep[${8}]}
-    force=${array_force[${9}]}
+    cutoff=$4
+    threads=$5
+    minmem=$6
+    maxmem=$7
+    keepfiles=${array_keep[${8}]}
+    verbose=${array_keep[${9}]}
+    force=${array_force[${10}]}
 
     # Logo
     echo ""
@@ -59,7 +60,7 @@ function logo() {
     checkProgress ${folder}
     echo "----------------------------------------------"
     echo ""
-  elif [[ $8 != 0 ]]; then
+  elif [[ $9 != 0 ]]; then
     # Logo
     echo ""
     echo "${w}/¯¯¯¯/|¯¯¯| |¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${n}"
@@ -90,6 +91,7 @@ function usage()
   echo "${w}OPTIONAL:${n}"
   echo "# Haplotype deviation:"
   echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
+  echo "  -c | --cutoff            Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25)."
   printf "\n"
   echo "# Input extension:"
   echo "  --fasta-extension        Reference file extension (default: fasta)."
@@ -107,7 +109,7 @@ function usage()
   printf "\n"
   echo "# Display:"
   echo "  -h  | --help             Display help."
-  echo "  -c  | --citation         Display citation."
+  echo "  --citation               Display citation."
   echo "  --folder_structure       Display required folder structure."
   printf "\n"
 }
@@ -156,6 +158,7 @@ FQEXT='fastq.gz'
 MIN_MEM=4
 MAX_MEM=8
 BPDEV=300
+CUTOFF=25
 FORCE=0
 KEEPF=0
 VERBOSE=2
@@ -191,6 +194,11 @@ while [[ "$1" > 0 ]]; do
     -l | --len_deviation)
       shift
       BPDEV=$1
+      shift
+      ;;
+    -c | --cutoff)
+      shift
+      CUTOFF=$1
       shift
       ;;
     --fasta_extension)
@@ -237,7 +245,7 @@ while [[ "$1" > 0 ]]; do
       usage
       exit
       ;;
-    -c | --citation)
+    --citation)
       citation
       exit
       ;;
@@ -527,8 +535,8 @@ function fingerPrint() {
       fi
     done
 
-    # Concatenate haplotypes
-    cat 60-Integration/${subf}/integration.tsv | awk '{print $1 "/" $(NF)}' | tail -n +2 > 60-Integration/${subf}/tmp.tsv
+    # Concatenate haplotypes (NF-1 to obtain "per_haplotype")
+    cat 60-Integration/${subf}/integration.tsv | awk '{print $1 "/" $(NF-1)}' | tail -n +2 > 60-Integration/${subf}/tmp.tsv
     for h in $(cat 60-Integration/${subf}/tmp.tsv); do
       seq=$(echo ${h} | cut -d "/" -f 1)
       num=$(echo ${h} | cut -d "/" -f 2)
@@ -637,21 +645,10 @@ function CleanFiles() {
 #-------------- #
 
 # Call logo
-logo ${INPUT_FOLDER} ${SEARCH_TARGET} ${BPDEV} ${THREADS} ${MIN_MEM} ${MAX_MEM} ${KEEPF} ${VERBOSE} ${FORCE}
+logo ${INPUT_FOLDER} ${SEARCH_TARGET} ${BPDEV} ${CUTOFF} ${THREADS} ${MIN_MEM} ${MAX_MEM} ${KEEPF} ${VERBOSE} ${FORCE}
 
 for subf in $(ls ${INPUT_FOLDER}); do
-
-  ## CHECK: Log file
-  if [[ -f 01-Logs/log_${subf}.txt ]]; then
-    # Remove old log file
-    rm -rf 01-Logs/log_${subf}.txt
-    touch 01-Logs/log_${subf}.txt
-  else
-    # Touch Log File
-    mkdir -p 01-Logs
-    touch 01-Logs/log_${subf}.txt
-  fi
-  
+ 
   ## CHECK: Redirect workflow given status and force
   if [ -f progress.txt ]; then
     status=$(grep -w ${subf} progress.txt | cut -f 2)
@@ -679,6 +676,17 @@ for subf in $(ls ${INPUT_FOLDER}); do
         rm -rf ${fld}/${subf}
       done
     fi
+  fi
+
+  ## CHECK: Log file
+  if [[ -f 01-Logs/log_${subf}.txt ]]; then
+    # Remove old log file
+    rm -rf 01-Logs/log_${subf}.txt
+    touch 01-Logs/log_${subf}.txt
+  else
+    # Touch Log File
+    mkdir -p 01-Logs
+    touch 01-Logs/log_${subf}.txt
   fi
 
   ## CHECK: Input in folder
@@ -922,7 +930,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
       # Filter haplotypes
       cp 60-Integration/${subf}/abundance.tsv 60-Integration/${subf}/abundance.orig.tsv
-      Rscript ${FILTER_HAPLOTYPES} -i 60-Integration/${subf}/abundance.tsv &>> 01-Logs/log_${subf}.txt
+      Rscript ${FILTER_HAPLOTYPES} -i 60-Integration/${subf}/abundance.tsv -c ${CUTOFF} &>> 01-Logs/log_${subf}.txt
 
       # --------------- #
       # II. Copy Number #
