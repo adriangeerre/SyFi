@@ -133,6 +133,31 @@ For example:
 
 SyFi loops through the samples of the folder and runs the steps in sequential order. It will run each sample one time and categorize it in *Success*, *Skipped* or *Failed*. Once, it runs over all samples, the option "-f | --force" must be used to re-run the sample through SyFi steps.
 
+### Output
+
+The default (minimum) output of SyFi (`-k 0`) consist of:
+
+- 10-Blast/<sample>.tsv
+- 11-Sequences/<sample>/<sample>.fasta
+- 20-Alignment/<sample>/<sample>.fasta
+- 20-Alignment/<sample>/<sample>.fastq.gz
+- 30-VariantCalling/<sample>/variants/<sample>.vcf.gz
+- 40-Phasing/<sample>/<sample>_assembly_h<sample>.fasta
+- 40-Phasing/<sample>/<sample>_phased.vcf.gz
+- 50-haplotypes/<sample>/clean_<sample>_haplotypes.fasta
+- 60-Integration/<sample>/abundance.tsv
+- 60-Integration/<sample>/copy_number.tsv
+- 60-Integration/<sample>/integration.tsv
+- 70-Integration/<sample>/<sample>_all_haplotypes.fasta
+- 70-Integration/<sample>/seq_h<number>.fasta
+
+In the case the option `-k 1` is defined, some BAM files are kept:
+
+- <sample>.rebuild.sort.bam
+- <sample>.sort.bam
+
+If the option `-k 2` is used, all the temporary files will be kept.
+
 ### Tips and tricks
 
 **Important:** If when running SyFi all the strains shows "WARNING: No target reads were recovered for XXXX. Computation will be skipped.", samtools might not be working properly. Please, check if `samtools --version` returns the proper output. If not, check that you run the libcrypto correction mentioned above. Otherwise, try obtaining a working samtools software in your system.
