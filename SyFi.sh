@@ -557,19 +557,20 @@ function fingerPrint() {
 function CleanFiles() {
   # Variables
   FOLDER=$1
-  KEEPF=$2
+  TARGET=$2
+  KEEPF=$3
 
   # Remove files
   if [ ${KEEPF} -eq 0 ]; then
     # Keep minimum
-    find . -type f -not -path "*/${FOLDER}/*" -not -path "*/10-Blast/*" -not -name "*progress.txt*" -not -name ".*" -not -name "*.vcf.gz" -not -name "*_assembly_h*.fasta" -not -name "clean_*_haplotypes.fasta" -not -name "abundance.tsv" -not -name "copy_number.tsv" -not -name "integration.tsv" -not -name "*_all_haplotypes.fasta" -not -name "seq_h*.fasta" -not -wholename "*/20-Alignment/*/*.fasta" -not -wholename "*/20-Alignment/*/*_R*.fastq.gz" -not -wholename "*/11-Sequences/*/*.fasta" -delete
+    find . -type f -not -path "*/${FOLDER}/*" -not -path "*/01-Logs/*" -not -path "*/10-Blast/*" -not -name "${TARGET}" -not -name "*progress.txt*" -not -name ".*" -not -name "*.vcf.gz" -not -name "*_assembly_h*.fasta" -not -name "clean_*_haplotypes.fasta" -not -name "abundance.tsv" -not -name "copy_number.tsv" -not -name "integration.tsv" -not -name "*_all_haplotypes.fasta" -not -name "seq_h*.fasta" -not -wholename "*/20-Alignment/*/*.fasta" -not -wholename "*/20-Alignment/*/*_R*.fastq.gz" -not -wholename "*/11-Sequences/*/*.fasta" -delete
     # Remove non-captured files/folders
     rm -rf 20-Alignment/*/spades 30-VariantCalling/*/genotyped 30-VariantCalling/*/variants/db_workspace
     # Remove empty directories
     find . -type d -empty -delete
   elif [ ${KEEPF} -eq 1 ]; then
     # Keep minimum and BAMs
-    find . -type f -not -path "*/${FOLDER}/*" -not -path "*/10-Blast/*" -not -name "*progress.txt*" -not -name ".*" -not -name "*.vcf.gz" -not -name "*_assembly_h*.fasta" -not -name "clean_*_haplotypes.fasta" -not -name "abundance.tsv" -not -name "copy_number.tsv" -not -name "integration.tsv" -not -name "*_all_haplotypes.fasta" -not -name "seq_h*.fasta" -not -wholename "*/20-Alignment/*/*.fasta" -not -wholename "*/20-Alignment/*/*_R*.fastq.gz" -not -wholename "*/11-Sequences/*/*.fasta" -not -name "*.sort.bam" -delete
+    find . -type f -not -path "*/${FOLDER}/*" -not -path "*/01-Logs/*" -not -path "*/10-Blast/*" -not -name "${TARGET}" -not -name "*progress.txt*" -not -name ".*" -not -name "*.vcf.gz" -not -name "*_assembly_h*.fasta" -not -name "clean_*_haplotypes.fasta" -not -name "abundance.tsv" -not -name "copy_number.tsv" -not -name "integration.tsv" -not -name "*_all_haplotypes.fasta" -not -name "seq_h*.fasta" -not -wholename "*/20-Alignment/*/*.fasta" -not -wholename "*/20-Alignment/*/*_R*.fastq.gz" -not -wholename "*/11-Sequences/*/*.fasta" -not -name "*.sort.bam" -delete
     # Remove non-captured files/folders
     rm -rf 20-Alignment/*/spades 30-VariantCalling/*/genotyped 30-VariantCalling/*/variants/db_workspace
     # Remove empty directories
@@ -707,7 +708,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     if [ ${VERBOSE} -eq 2 ]; then printf "\n${yellow}WARNING:${normal} No target reads were recovered for ${subf}. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt; fi
     printf "${subf}\tFailed\tNo reads recovered for target\n" >> progress.txt
     # Clean files/folders
-    CleanFiles ${INPUT_FOLDER} ${KEEPF}
+    CleanFiles ${INPUT_FOLDER} ${SEARCH_TARGET} ${KEEPF}
     # Date
     date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
     echo ""
@@ -778,7 +779,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     if [ ${VERBOSE} -eq 2 ]; then printf "\n${yellow}}WARNING:${normal} No target reads were recovered for ${subf}. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt; fi
     printf "${subf}\tFailed\tNo reads recovered for target\n" >> progress.txt
     # Clean files/folders
-    CleanFiles ${INPUT_FOLDER} ${KEEPF}
+    CleanFiles ${INPUT_FOLDER} ${SEARCH_TARGET} ${KEEPF}
     # Date
     date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
     echo ""
@@ -813,7 +814,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
       if [ ${VERBOSE} -eq 2 ]; then printf "\n${yellow}WARNING:${normal} No haplotypes were recovered for ${subf}. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt; fi
       printf "${subf}\tFailed\tNo haplotypes were found\n" >> progress.txt
       # Clean files/folders
-      CleanFiles ${INPUT_FOLDER} ${KEEPF}
+      CleanFiles ${INPUT_FOLDER} ${SEARCH_TARGET} ${KEEPF}
       # Date
       date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
       echo ""
@@ -887,7 +888,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
         if [ ${VERBOSE} -eq 2 ]; then printf "\n${yellow}WARNING:${normal} Missing kallisto output for ${subf}. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt; fi
         printf "${subf}\tFailed\tKallisto could not determined the haplotype abundances\n" >> progress.txt
         # Clean files/folders
-        CleanFiles ${INPUT_FOLDER} ${KEEPF}
+        CleanFiles ${INPUT_FOLDER} ${SEARCH_TARGET} ${KEEPF}
         # Date
         date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
         echo ""
@@ -910,7 +911,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
         if [ ${VERBOSE} -eq 2 ]; then printf "\n${yellow}WARNING:${normal} Missing integration output for ${subf}. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt; fi
         printf "${subf}\tFailed\tIntegration could not be performed\n" >> progress.txt
         # Clean files/folders
-        CleanFiles ${INPUT_FOLDER} ${KEEPF}
+        CleanFiles ${INPUT_FOLDER} ${SEARCH_TARGET} ${KEEPF}
         # Date
         date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
         echo ""
@@ -970,7 +971,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # ExI. Clean folder #
   # ----------------- #
 
-  CleanFiles ${INPUT_FOLDER} ${KEEPF}
+  CleanFiles ${INPUT_FOLDER} ${SEARCH_TARGET} ${KEEPF}
 
 done
 
