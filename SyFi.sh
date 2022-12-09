@@ -164,7 +164,7 @@ KEEPF=0
 VERBOSE=2
 
 # Define software path
-SYFI_BASE=$(/usr/bin/dirname $(/usr/bin/realpath ${0}))
+SYFI_BASE=$(dirname $(whereis ${0} | cut -d " " -f 2))
 GENOME_PHASE=$(echo ${SYFI_BASE}/src/genome_phase.sh)
 FILTER_HAPLOTYPES=$(echo ${SYFI_BASE}/src/filterHaplotypes.R)
 INTEGRATION=$(echo ${SYFI_BASE}/src/Integration.R)
@@ -274,7 +274,7 @@ function ctrl_c() {
 ### Checks
 
 # Check: Software dependencies
-software=(blastn bwa-mem2 samtools gzip spades.py seqtk seqkit kallisto Rscript gatk plot-bamstats bcftools plot-vcfstats)
+software=(blastn bwa-mem2 samtools gzip spades.py seqtk seqkit kallisto Rscript gatk plot-bamstats bcftools)
 for pckg in ${software[@]}
 do 
   type ${pckg} 2> /dev/null 1>&2 
@@ -452,7 +452,6 @@ function jointGenotype() {
   # bcftools query -l ${output_vcf}
 
   bcftools stats -F ${reference_fasta} -s- ${output_vcf} > ${comp_fn}
-  plot-vcfstats -p ${plot_dir} -s ${comp_fn}
 }
 
 # FUNCTION: Copy Number
@@ -975,10 +974,43 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
 done
 
+# Stats report
+if [[ ! -f Summary.tsv ]]; then
+
+  # Calculations
+  tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
+
+  # Header
+  printf "## SyFi" > Summary.tsv
+  printf "## Execution: SyFi.sh -i ${INPUT_FOLDER} -s ${SEARCH_TARGET} -l ${BPDEV} -c ${CUTOFF} -t ${THREADS} -mn ${MIN_MEM} -mx ${MAX_MEM} -k ${KEEPF} -v ${VERBOSE} -f ${FORCE}"
+  printf "## Target Length: ${tl}" >> Summary.tsv
+  printf "## Samples: $(wc -l progress.txt)" >> Summary.tsv
+  printf "## Success: $(grep "Success" progress.txt | wc -l)" >> Summary.tsv
+  printf "Isolate\tRecovered_target_length\tLength_deviation\tRecovered_reads\tNumber_SNPs\tCutoff\tNumber_haplotypes\tCopy_number\tHaplotype_ratio\tModified_output\n" >> Summary.tsv
+
+  # Loop Success
+  if [[ -f progress.txt ]]; then
+    for iso in $(grep "Success" progress.txt | cut -f 1); do
+      # Variables
+      rtl=$(grep -v "^>" 20-Alignment/${iso}/${iso}.fasta | wc -c)
+      recr1=$(zcat 20-Alignment/${iso}/${iso}_R1.fastq.gz | grep "^@" | wc -l)
+      recr2=$(zcat 20-Alignment/${iso}/${iso}_R2.fastq.gz | grep "^@" | wc -l)
+      nsnps=$(zcat 30-VariantCalling/${iso}/variants/${iso}.vcf.gz | grep -v "#" | wc -l)
+      nhaplo=$(grep "^>" 50-Haplotypes/${iso}/clean_${iso}_haplotypes.fasta | wc -l)
+      cnum=$(cut -f 9 60-Integration/${iso}/integration.tsv | tail -n 1)
+      rhaplo=$(cut -f 14 60-Integration/${iso}/integration.tsv | grep -v "per_haplotype" | tr "\n" "/" | sed 's/\/$//')
+      mod=$(cut -f 15 60-Integration/${iso}/integration.tsv | tail -n 1)
+
+      # Row
+      printf "${iso}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t${cnum}\t${rhaplo}\t${mod}\n" >> Summary.tsv
+    done 
+  fi
+fi
+
 # Final format
 
 if [ ${VERBOSE} -ge 1 ]; then
-  printf "Finish:\n"
+  printf "\nFinish:\n"
   date "+    date: %d/%m/%Y" 
   date "+    time: %H:%M:%S"
   printf "\n"
