@@ -58,9 +58,9 @@ if (opt$mode == "unique") {
   abun$adjusted_values <- "No"
   
   # Check and recompute, if necessary
-  enter_while = FALSE
-  while (unique(abun$proportion) > 0.5) {
-    enter_while = TRUE
+  enter_while = TRUE
+  while (unique(abun$proportion) < 0.5) {
+    enter_while = FALSE
     # Remove haplotype with lowest ratio
     min_ratio <- min(abun$ratio)
     if (nrow(abun) <= 1) {
@@ -78,7 +78,7 @@ if (opt$mode == "unique") {
     abun$adjusted_values <- "No"
   }
   
-  if (enter_while == FALSE) {
+  if (enter_while == FALSE and unique(abun$proportion) < 0.5) {
     # Select maximum ratio haplotype
     max_ratio <- max(abun$ratio)
     abun <- abun[abun$ratio == max_ratio,]
@@ -102,7 +102,7 @@ if (opt$mode == "unique") {
   }
   
   # Check and save
-  if (unique(abun$proportion) > 0.5) {
+  if (unique(abun$proportion) >= 0.5) {
     # Save
     #-----
     write.table(abun, file=paste("60-Integration/", opt$i, "/integration.tsv", sep=""), quote=F, col.names=T, row.names=F, sep="\t")

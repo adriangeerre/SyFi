@@ -947,7 +947,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     mkdir -p 60-Integration/${subf}
 
     # Integrate only step II 
-    Rscript 00-Scripts/Integration.R -r "None" -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m 'unique' &>> 01-Logs/log_${subf}.txt
+    Rscript ${INTEGRATION} -r "None" -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m 'unique' &>> 01-Logs/log_${subf}.txt
 
     # ---------------- #
     # IV. Fingerprints #
