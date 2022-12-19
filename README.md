@@ -35,23 +35,23 @@ conda install -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatsha
 conda install -c conda-forge r-base r-optparse
 
 # Correct Samtools libcrypto.so error:
-cd <ANACONDA_PATH>/envs/SyFi/lib
+cd {ANACONDA_PATH}/envs/SyFi/lib
 ln -s libcrypto.so.1.1 libcrypto.so.1.0.0
 ```
 
-Where <ANACONDA_PATH> is the path of your **own anaconda/miniconda** installation.
+Where *{ANACONDA_PATH}* is the path of your **own anaconda/miniconda** installation.
 
 ### Executable software
 
-For the installation of GATK, we downloaded the pre-compile software from their Github site. In the following code we use the <SOFTWARE_FOLDER_PATH> variable to define a potential software folder. Please, modify the code with your own folder path.
+For the installation of GATK, we downloaded the pre-compile software from their Github site. In the following code we use the *{SOFTWARE_FOLDER_PATH}* variable to define a potential software folder. Please, modify the code with your own folder path.
 
 __JAVA:__
 
 ```
-cd <SOFTWARE_FOLDER_PATH>
+cd {SOFTWARE_FOLDER_PATH}
 wget "https://download.oracle.com/java/19/latest/jdk-19_linux-x64_bin.tar.gz"
 tar -xvzf jdk-19_linux-x64_bin.tar.gz
-echo 'export PATH="<SOFTWARE_FOLDER_PATH>/jdk-19.0.1/bin:$PATH"' >> $HOME/.bashrc
+echo 'export PATH="{SOFTWARE_FOLDER_PATH}/jdk-19.0.1/bin:$PATH"' >> $HOME/.bashrc
 ```
 
 More information on Java (jdk) [here](https://www.oracle.com/java/technologies/jdk-script-friendly-urls/).
@@ -59,10 +59,10 @@ More information on Java (jdk) [here](https://www.oracle.com/java/technologies/j
 
 __GATK:__
 ```
-cd <SOFTWARE_FOLDER_PATH>
+cd {SOFTWARE_FOLDER_PATH}
 wget https://github.com/broadinstitute/gatk/archive/refs/tags/4.2.6.1.tar.gz
 tar -xvzf 4.2.6.1.tar.gz
-echo 'export PATH="<SOFTWARE_FOLDER_PATH>/gatk-4.2.6.1:$PATH"' >> $HOME/.bashrc
+echo 'export PATH="{SOFTWARE_FOLDER_PATH}/gatk-4.2.6.1:$PATH"' >> $HOME/.bashrc
 ```
 
 For more information on how to install GATK refeer to [GATK-Build](https://github.com/broadinstitute/gatk#building).
@@ -72,10 +72,10 @@ For more information on how to install GATK refeer to [GATK-Build](https://githu
 Download the latest package release. Please, modify the code with your own folder path.
 
 ```
-cd <SOFTWARE_FOLDER_PATH>
+cd {SOFTWARE_FOLDER_PATH}
 wget ...
 tar -xvzf latest_release.tar.gz
-echo 'export PATH="<SOFTWARE_FOLDER_PATH>/SyFi_<version>/:$PATH"' >> $HOME/.bashrc
+echo 'export PATH="{SOFTWARE_FOLDER_PATH}/SyFi_{version}/:$PATH"' >> $HOME/.bashrc
 ```
 
 ### Usage
@@ -137,28 +137,28 @@ SyFi loops through the samples of the folder and runs the steps in sequential or
 
 The default (minimum) output of SyFi (`-k 0`) consist of:
 
-- 10-Blast/<sample>.tsv
-- 11-Sequences/<sample>/<sample>.fasta
-- 20-Alignment/<sample>/<sample>.fasta
-- 20-Alignment/<sample>/<sample>.fastq.gz
-- 30-VariantCalling/<sample>/variants/<sample>.vcf.gz
-- 40-Phasing/<sample>/<sample>_assembly_h<sample>.fasta
-- 40-Phasing/<sample>/<sample>_phased.vcf.gz
-- 50-haplotypes/<sample>/clean_<sample>_haplotypes.fasta
-- 60-Integration/<sample>/abundance.tsv
-- 60-Integration/<sample>/copy_number.tsv
-- 60-Integration/<sample>/integration.tsv
-- 70-Integration/<sample>/<sample>_all_haplotypes.fasta
-- 70-Integration/<sample>/seq_h<number>.fasta
+- 10-Blast/*{sample}*.tsv
+- 11-Sequences/*{sample}*/*{sample}*.fasta
+- 20-Alignment/*{sample}*/*{sample}*.fasta
+- 20-Alignment/*{sample}*/*{sample}*.fastq.gz
+- 30-VariantCalling/*{sample}*/variants/*{sample}*.vcf.gz
+- 40-Phasing/*{sample}*/*{sample}*_assembly_h*{sample}*.fasta
+- 40-Phasing/*{sample}*/*{sample}*_phased.vcf.gz
+- 50-haplotypes/*{sample}*/clean\_*{sample}*\_haplotypes.fasta
+- 60-Integration/*{sample}*/abundance.tsv
+- 60-Integration/*{sample}*/copy_number.tsv
+- 60-Integration/*{sample}*/integration.tsv
+- 70-Integration/*{sample}*/*{sample}*_all_haplotypes.fasta
+- 70-Integration/*{sample}*/seq_h*{number}*.fasta
 
 In the case the option `-k 1` is defined, some BAM files are kept:
 
-- <sample>.rebuild.sort.bam
-- <sample>.sort.bam
+- *{sample}*.rebuild.sort.bam
+- *{sample}*.sort.bam
 
 If the option `-k 2` is used, all the temporary files will be kept.
 
-### Tips and tricks
+### Troubleshooting
 
 **Important:** If when running SyFi all the strains shows "WARNING: No target reads were recovered for XXXX. Computation will be skipped.", samtools might not be working properly. Please, check if `samtools --version` returns the proper output. If not, check that you run the libcrypto correction mentioned above. Otherwise, try obtaining a working samtools software in your system.
 
