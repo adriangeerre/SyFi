@@ -73,8 +73,8 @@ Download the latest package release. Please, modify the code with your own folde
 
 ```
 cd {SOFTWARE_FOLDER_PATH}
-wget ...
-tar -xvzf latest_release.tar.gz
+wget https://github.com/adriangeerre/SyFi/releases/download/beta/SyFi_beta.zip
+unzip SyFi_beta.zip
 echo 'export PATH="{SOFTWARE_FOLDER_PATH}/SyFi_{version}/:$PATH"' >> $HOME/.bashrc
 ```
 
@@ -91,6 +91,7 @@ REQUIRED:
 OPTIONAL:
 # Haplotype deviation:
   -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp).
+  -c | --cutoff            Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25).
 
 # Input extension:
   --fasta-extension        Reference file extension (default: fasta).
@@ -102,13 +103,13 @@ OPTIONAL:
   -mx | --max_memory       Maximum memory required in GB (default: 8GB).
 
 # Output options:
-  -k  | --keep_files       Keep temporary files [0: None, 1: BAM's, or 2: All] (default: 0).
+  -k  | --keep_files       Keep temporary files [0: Minimum, 1: BAM's, or 2: All] (default: 0).
   -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
   -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0).
 
 # Display:
   -h  | --help             Display help.
-  -c  | --citation         Display citation.
+  --citation               Display citation.
   --folder_structure       Display required folder structure.
 ```
 
@@ -128,6 +129,7 @@ For example:
                 ├── strain_2_R1.fastq.gz
                 ├── strain_2_R2.fastq.gz
                 └── strain_2.fasta
+            └── ...
 
 ```
 
@@ -137,32 +139,32 @@ SyFi loops through the samples of the folder and runs the steps in sequential or
 
 The default (minimum) output of SyFi (`-k 0`) consist of:
 
-- 10-Blast/*{sample}*.tsv
-- 11-Sequences/*{sample}*/*{sample}*.fasta
-- 20-Alignment/*{sample}*/*{sample}*.fasta
-- 20-Alignment/*{sample}*/*{sample}*.fastq.gz
-- 30-VariantCalling/*{sample}*/variants/*{sample}*.vcf.gz
-- 40-Phasing/*{sample}*/*{sample}*_assembly_h*{sample}*.fasta
-- 40-Phasing/*{sample}*/*{sample}*_phased.vcf.gz
-- 50-haplotypes/*{sample}*/clean\_*{sample}*\_haplotypes.fasta
-- 60-Integration/*{sample}*/abundance.tsv
-- 60-Integration/*{sample}*/copy_number.tsv
-- 60-Integration/*{sample}*/integration.tsv
-- 70-Integration/*{sample}*/*{sample}*_all_haplotypes.fasta
-- 70-Integration/*{sample}*/seq_h*{number}*.fasta
+- 10-Blast/*{strain}*.tsv
+- 11-Sequences/*{strain}*/*{strain}*.fasta
+- 20-Alignment/*{strain}*/*{strain}*.fasta
+- 20-Alignment/*{strain}*/*{strain}*.fastq.gz
+- 30-VariantCalling/*{strain}*/variants/*{strain}*.vcf.gz
+- 40-Phasing/*{strain}*/*{strain}*_assembly_h *{strain}*.fasta
+- 40-Phasing/*{strain}*/*{strain}*_phased.vcf.gz
+- 50-haplotypes/*{strain}*/clean\_*{strain}*\_haplotypes.fasta
+- 60-Integration/*{strain}*/abundance.tsv
+- 60-Integration/*{strain}*/copy_number.tsv
+- 60-Integration/*{strain}*/integration.tsv
+- 70-Integration/*{strain}*/*{strain}*_all_haplotypes.fasta
+- 70-Integration/*{strain}*/seq_h *{number}*.fasta
 
 In the case the option `-k 1` is defined, some BAM files are kept:
 
-- *{sample}*.rebuild.sort.bam
-- *{sample}*.sort.bam
+- *{strain}*.rebuild.sort.bam
+- *{strain}*.sort.bam
 
 If the option `-k 2` is used, all the temporary files will be kept.
 
 ### Troubleshooting
 
-**Important:** If when running SyFi all the strains shows "WARNING: No target reads were recovered for XXXX. Computation will be skipped.", samtools might not be working properly. Please, check if `samtools --version` returns the proper output. If not, check that you run the libcrypto correction mentioned above. Otherwise, try obtaining a working samtools software in your system.
+**Important:** If when running SyFi all the strains shows "WARNING: No target reads were recovered for *{strain}*. Computation will be skipped.", samtools might not be working properly. Please, check if `samtools --version` returns the proper output. If not, check that you run the libcrypto correction mentioned above. Otherwise, try obtaining a working samtools software in your system.
 
-**Important:** If when running SyFi all the strains shows "WARNING: VCF file missing for XXXX. Computation will be skipped.", GATK might not be working properly. Please, check if `gatk --version` returns the proper output. If not, install gatk in your system or download the pre-compile version from this repository.
+**Important:** If when running SyFi all the strains shows "WARNING: VCF file missing for *{strain}*. Computation will be skipped.", GATK might not be working properly. Please, check if `gatk --version` returns the proper output. If not, install gatk in your system or download the pre-compile version from this repository.
 
 **Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example, by using Blast. This is because the genome/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations. In other words, the consensus sequence "ACGTACGT" might be coming from a) "ACGTACGT" and b) "ACCTACGT" reads in the population. Given that, the "G/C" variant is masked when obtaining the consesus genome/MAG (in this case we have a G), the direct count of 16S haplotypes (in this case 1; a) from the reference could be different that the population 16S haplotypes (in this case 2; a and b).
 
