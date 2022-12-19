@@ -78,7 +78,7 @@ if (opt$mode == "unique") {
     abun$adjusted_values <- "No"
   }
   
-  if (enter_while == FALSE and unique(abun$proportion) < 0.5) {
+  if (enter_while == FALSE & unique(abun$proportion) < 0.5) {
     # Select maximum ratio haplotype
     max_ratio <- max(abun$ratio)
     abun <- abun[abun$ratio == max_ratio,]

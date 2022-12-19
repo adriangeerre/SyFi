@@ -87,11 +87,19 @@ The situations are recovered in the file *progress.txt* which it is used to defi
 
 ### Issues found (for us):
 
-**Integration**
+**Integration 1**
 
 I has an issue were the integration failed because the resulting integration file was empty. This happened when I have multiple haplotypes. The issue was a bad while loop in *Integration.R*.
 
 After that, I found out that the ratio could be low (<0.5) causing values to be odd. Therefore, when we encounter a ratio that it is below 1 we automatically upgrade it to 1 because if we are able to compute both the abundance and the copy number is because, at least, there is 1 target copy. However, to inform of this modification, we added the column *adjusted_values* (Yes|No) to determine if the ratio was below 1 (when Yes).
+
+**Integration 2**
+
+When multiple haplotypes are present, the script integration.R works in the following way:
+- Using the abundance (kallisto) and the copy number (syfi), we compute the proportion per haplotype by dividing the copy number by the haplotype divisible (or the rounded abundance ratio).
+- If the proportion is below 0.5 we remove the haplotype with the smallest abundance ratio and recompute the proportion until it is equal or above 0.5 or there is only one haplotype left.
+- In the case the remaining haplotype is below 0.5, we round the proportion to 1 and we define the column "adjusted values" as "Yes". In the column the value "No" means that the values are the original results from the calculations and they have not been adjusted by us.
+- If the proportion is above 0.5, we keep the haplotypes and no further processing is performed.
 
 **Modification of progress.txt**
 
