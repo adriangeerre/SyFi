@@ -18,7 +18,7 @@ library(optparse)
 option_list = list(
   make_option(c("-i", "--input"), action="store", default=NA, type='character',
               help="Input path with kallisto output file."),
-  make_option(c("-c", "--cutoff"), action="store", default=NA, type='character',
+  make_option(c("-c", "--cutoff"), action="store", default=NA, type='double',
               help="Cutoff to define deviation between ratios.")
   )
 opt = parse_args(OptionParser(option_list=option_list))

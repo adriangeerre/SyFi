@@ -150,8 +150,8 @@ The default (minimum) output of SyFi (`-k 0`) consist of:
 - 60-Integration/*{strain}*/abundance.tsv
 - 60-Integration/*{strain}*/copy_number.tsv
 - 60-Integration/*{strain}*/integration.tsv
-- 70-Integration/*{strain}*/*{strain}*_all_haplotypes.fasta
-- 70-Integration/*{strain}*/seq_h *{number}*.fasta
+- 70-Fingerprints/*{strain}*/*{strain}*_all_haplotypes.fasta
+- 70-Fingerprints/*{strain}*/seq_h *{number}*.fasta
 
 In the case the option `-k 1` is defined, some BAM files are kept:
 
