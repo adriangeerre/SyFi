@@ -538,8 +538,13 @@ function fingerPrint() {
       seq=$(echo ${h} | cut -d "/" -f 1)
       num=$(echo ${h} | cut -d "/" -f 2)
       for n in $(seq ${num}); do
+        # End when haplotype ratio > 1
         if [[ ${n} == ${num} && ${n} != 1 ]]; then
           grep -v "^>" 70-Fingerprints/${subf}/${seq}.fasta >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+        # End when haplotype ratio == 1 
+        elif [[ ${n} == ${num} && ${n} == 1 ]]; then
+          grep -v "^>" 70-Fingerprints/${subf}/${seq}.fasta >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
+        # Addition of haplotypes before ending
         else
           grep -v "^>" 70-Fingerprints/${subf}/${seq}.fasta >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
           echo "NNNNNNNNNN" >> 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
@@ -764,7 +769,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   mkdir -p 20-Alignment/${subf}/flanking
   blastn -subject ${SEARCH_TARGET} -query 20-Alignment/${subf}/spades/contigs.seqtk.fasta -outfmt "6 std sseq" > 20-Alignment/${subf}/flanking/${subf}.target.tsv
 
-  # Size select blast hits
+  # Size select blast hits (I cannot trust 6 !!!)
   while read -r line;do
     total=$(echo ${line} | cut -d " " -f 4)
     mist=$(echo ${line} | cut -d " " -f 6)
