@@ -104,3 +104,51 @@ When multiple haplotypes are present, the script integration.R works in the foll
 **Modification of progress.txt**
 
 For the moment, the file *progress.txt* is not hidden. That means that the user could modify the file, affecting the execution of the software. This is a double-side sword because users can take advantage of this file to force re-computation of samples but at the same time, if they are not good enough, there modification can cause issues. For example, if you have run a sample through SyFi and later on you remove the corresponding line in *progress.txt*, the sample will be re-computed but the previous files will not be erased. This might cause, issues like files with multiple lines and intermediate errors that will end in Skipped or Failed outcomes.
+
+
+### SyFi steps:
+
+1. Mapping:
+    1. Run blastn using the reference fasta file as the query and the target as the subject
+    2. Extract the largest hit (or one out of many) from the blast output
+2. Alignment:
+    1. Index target fasta file (Step 1.2)
+    2. Map input paired-end reads against index
+    3. Subset high quality and proper paired reads of the alignment output
+3. Read recovery:
+    1. Extract paired-end reads from subset (Step 2.1)
+4. Contig re-build:
+    1. _De novo_ assembly of extracted paired-end reads
+    2. Minimum size select the _de novo_ contigs
+    3. Run Blast against the target to determine the sides (left and right) flanking regions
+    4. Define size of blast hit without flanking regions
+    5. Select the largest target recovered
+5. Contig re-alignment:
+    1. Align reads against largest recovered target
+6. Variant Calling:
+    1. Remove alignment duplicates (Step 5.1)
+    2. Haplotype caller
+    3. Join genotyping
+    4. Define if sample has 1 or more haplotypes (2 ways: unique or multiple)
+7. Phasing
+    1. Perform the phasing using the reference fasta, variants file and alignment file
+    2. Call the consensus haplotypes of allele 1 and 2 individually
+8. Abundance ratio:
+    1. Index the clean haplotypes (Step 7.X)
+    2. Quantify the abundance of each haplotypes using the input peared-end reads
+    3. Filter the abundance using the cutoff
+9. Target Copy Number:
+    1. Define length of assembly
+    2. Define number of bases in reads
+    3. Define length of largest recovered target
+    4. Define number of bases in reads within the recovered target
+    5. Compute target's copy number
+10. Integration:
+    1. Merge haplotype abundance and target copy number
+    2. Compute proportion and haplotype divisible (Modes: unique or multiple)
+    3. Recursively, remove the haplotype with the lowest ratio if proportion is below 0.5 and if there is more than one haplotype left
+    4. Adjust values when there is one haplotype and proportion is below 0.5
+11. Fingerprint:
+    1. Concatenate all haplotypes with their defined haplotype ratio using 10xN as delimiter
+12. Clean Files
+13. Create Summary
