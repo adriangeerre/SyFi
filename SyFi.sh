@@ -365,7 +365,7 @@ function variantCalling() {
   echo "Haplotype calling"
   haplotypeCaller ${reference_fasta} ${reference_dict} ${output_dir} ${input_bam} ${max_mem}
 
-  # Joint genotyping
+  # Join genotyping
   printf "\n"
   echo "Join genotyping"
   jointGenotype ${reference_fasta} ${output_dir} ${threads} ${max_mem} ${min_mem}
@@ -444,7 +444,7 @@ function jointGenotype() {
   # Create intervals
   cat 20-Alignment/${sample}/${sample}.fasta.fai | awk '{print $1":1-"$2}' > ${intervals_fn}
 
-  gatk --java-options "-Xmx${max_mem}g -Xms${min_mem}g -Djava.io.tmpdir={output_dir}/variants/" GenomicsDBImport -V ${input_gvcf} -L ${intervals_fn} --tmp-dir ${output_dir}/variants/ --genomicsdb-workspace-path ${workspace_dir} --batch-size 70 --seconds-between-progress-updates 120 --reader-threads ${threads} ${merge_intervals} # Run genotype (Create database)
+  gatk --java-options "-Xmx${max_mem}g -Xms${min_mem}g -Djava.io.tmpdir=${output_dir}/variants/" GenomicsDBImport -V ${input_gvcf} -L ${intervals_fn} --tmp-dir ${output_dir}/variants/ --genomicsdb-workspace-path ${workspace_dir} --batch-size 70 --seconds-between-progress-updates 120 --reader-threads ${threads} ${merge_intervals} # Run genotype (Create database)
 
   gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir={output_dir}/variants/" GenotypeGVCFs -V gendb://${database} -R ${reference_fasta} -O ${output_vcf} --tmp-dir ${output_dir}/variants/ -L ${intervals_fn} -G StandardAnnotation --seconds-between-progress-updates 120 # Run genotype
   # bcftools query -l ${output_vcf}
@@ -472,12 +472,14 @@ function copyNumber() {
   # Get number of bases in assembly reads (Speed up?)
   braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
 
-  # Get length of longest recovered target
-  l16S=$(cut -f 14 20-Alignment/${subf}/flanking/max.tsv)
+  # Get length of longest recovered target without flanking regions
+  l16S=$(cut -f 15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | awk 'BEGIN{a=0} {if ($1>0+a) a=$1} END{print a}')
 
+  # Define start and end of target for base count (Choose first one if l16S returns multiple (equal size))
+  start=$(cut -f 7,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | head -n 1 | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}')
+  end=$(cut -f 8,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | head -n 1 | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}')
+  
   # Number of bases in selected reads
-  start=$(cut -f 7 20-Alignment/${subf}/flanking/max.tsv)
-  end=$(cut -f 8 20-Alignment/${subf}/flanking/max.tsv)
   b16S=$(bedtools genomecov -d -ibam 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v start=${start} '($2 > start)' | awk -v end=${end} '($2 < end)' | awk '{sum+=$3;} END{print sum;}')
 
   # Compute ratio (round <1 to 1)
@@ -497,6 +499,7 @@ function fingerPrint() {
   # Variables
   mode=$1 # unique/multiple
   subf=$2
+  variants=$3 # Yes/No
 
   # Create folder
   mkdir -p 70-Fingerprints/${subf}
@@ -517,11 +520,22 @@ function fingerPrint() {
     if [ ${VERBOSE} -eq 2 ]; then printf "Fingerprint\n"; fi
     printf "\n\n### Fingerprint ###\n\n" >> 01-Logs/log_${subf}.txt
 
-    # Separate fasta into multiples fasta
-    seqkit split -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta -O 70-Fingerprints/${subf} &>> 01-Logs/log_${subf}.txt
+    # Check: Variants (Yes/No)
+    if [ $variants == "Yes" ]; then
+      # Separate fasta into multiples fasta
+      seqkit split -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta -O 70-Fingerprints/${subf} &>> 01-Logs/log_${subf}.txt
 
-    # Rename haplotypes files
-    for i in $(ls -d 70-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/clean_${subf}_haplotypes.part_//g"); done &>> 01-Logs/log_${subf}.txt
+      # Rename haplotypes files
+      for i in $(ls -d 70-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/clean_${subf}_haplotypes.part_//g"); done &>> 01-Logs/log_${subf}.txt
+    elif [ $variants == "No" ]; then
+      # Separate fasta into multiples fasta
+      seqkit split -i 20-Alignment/${subf}/${subf}.fasta -O 70-Fingerprints/${subf} &>> 01-Logs/log_${subf}.txt
+
+      # Rename haplotypes files
+      for i in $(ls -d 70-Fingerprints/${subf}/*); do mv ${i} $(echo ${i} | sed "s/${subf}.part_//g"); done &>> 01-Logs/log_${subf}.txt
+    else
+      printf "Variants variable is not yes or no but ${variants}" >> 01-Logs/log_${subf}.txt
+    fi
 
     # Keep haplotypes filtered in integration
     keep=($(tail -n +2 60-Integration/${subf}/integration.tsv | cut -f 1))
@@ -643,9 +657,9 @@ for subf in $(ls ${INPUT_FOLDER}); do
         grep -wv ${subf} progress.txt > tmp
         mv tmp progress.txt
       fi
-
-      rm 10-Blast/${subf}.tsv
+      
       # Remove results for sample
+      rm 10-Blast/${subf}.tsv
       for fld in 11-Sequences 20-Alignment 30-VariantCalling 40-Phasing 50-Haplotypes 60-Integration 70-Fingerprints; do
         rm -rf ${fld}/${subf}
       done
@@ -721,7 +735,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Sam to BAM
   samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
   # Sort BAM (Coordinate) for Variant Call
-  samtools sort -o 20-Alignment/${subf}/${subf}.sort.bam -O bam 20-Alignment/${subf}/${subf}.bam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt
+  # samtools sort -o 20-Alignment/${subf}/${subf}.sort.bam -O bam 20-Alignment/${subf}/${subf}.bam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt
   # Obtain BAM of mapped reads (properly pair)
   samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.bam 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.mapped.bam
 
@@ -767,13 +781,15 @@ for subf in $(ls ${INPUT_FOLDER}); do
   
   # Define target without flanking regions
   mkdir -p 20-Alignment/${subf}/flanking
-  blastn -subject ${SEARCH_TARGET} -query 20-Alignment/${subf}/spades/contigs.seqtk.fasta -outfmt "6 std sseq" > 20-Alignment/${subf}/flanking/${subf}.target.tsv
+  blastn -subject ${SEARCH_TARGET} -query 20-Alignment/${subf}/spades/contigs.seqtk.fasta -outfmt "6 std sseq qlen" > 20-Alignment/${subf}/flanking/${subf}.target.tsv
 
-  # Size select blast hits (I cannot trust 6 !!!)
+  # Size select blast hits
   while read -r line;do
-    total=$(echo ${line} | cut -d " " -f 4)
-    mist=$(echo ${line} | cut -d " " -f 6)
-    len=$((total-mist))
+    qstart=$(echo ${line} | cut -d " " -f 7)
+    qend=$(echo ${line} | cut -d " " -f 8)
+    total=$((qend-qstart))
+    gaps=$(echo ${line} | cut -d " " -f 13 | grep -o "-" | wc -l)
+    len=$((total-gaps))
     if [ $len -ge $min_tl ]; then
       printf "${line}\t${len}\n"
     fi
@@ -789,11 +805,12 @@ for subf in $(ls ${INPUT_FOLDER}); do
   fi
 
   # Select maximum (in all cases)
-  cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | sort -n -k14 | tail -n 1 > 20-Alignment/${subf}/flanking/max.tsv
-  cut -f 1 20-Alignment/${subf}/flanking/max.tsv > 20-Alignment/${subf}/flanking/max.header.txt
+  # cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | sort -n -k14 | tail -n 1 > 20-Alignment/${subf}/flanking/max.tsv
+  # cut -f 1 20-Alignment/${subf}/flanking/max.tsv > 20-Alignment/${subf}/flanking/max.header.txt
 
   # Select recovered sequence given header of maximum
-  seqtk subseq 20-Alignment/${subf}/spades/contigs.seqtk.fasta 20-Alignment/${subf}/flanking/max.header.txt > 20-Alignment/${subf}/${subf}.fasta
+  #seqtk subseq 20-Alignment/${subf}/spades/contigs.seqtk.fasta 20-Alignment/${subf}/flanking/max.header.txt > 20-Alignment/${subf}/${subf}.fasta
+  cp 20-Alignment/${subf}/spades/contigs.seqtk.fasta 20-Alignment/${subf}/${subf}.fasta
 
   # Align
   printf "\n\n### Contig re-alignment (BWA) ###\n\n" >> 01-Logs/log_${subf}.txt
@@ -952,11 +969,85 @@ for subf in $(ls ${INPUT_FOLDER}); do
       fi
 
       # Fingerprint
-      fingerPrint 'multiple' ${subf}
+      fingerPrint 'multiple' ${subf} 'Yes'
     fi
-  elif [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 ]]; then
+  # Check: No variants but multiple recovered targets
+  elif [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 && $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) > 1 ]]; then
+
+    if [ ${VERBOSE} -eq 2 ]; then printf "Phasing [Avoid]; "; fi
+
+    ## ------------------------------------
+    ## Haplotype abundance ratio (Kallisto)
+    ## ------------------------------------
+
+    # Kallisto (Applied to strains with two recovered targets - 2 haplotypes)
+    # Create folder
+    mkdir -p 60-Integration
+
+    if [ ${VERBOSE} -eq 2 ]; then printf "Abundance ratio; "; fi
+
+    # Kallisto
+    printf "\n\n### Kallisto ###\n\n" >> 01-Logs/log_${subf}.txt
+    kallisto index -i 20-Alignment/${subf}/${subf}.fasta.idx 20-Alignment/${subf}/${subf}.fasta &>> 01-Logs/log_${subf}.txt
+    kallisto quant -i 20-Alignment/${subf}/${subf}.fasta.idx -o 60-Integration/${subf} ${INPUT_FOLDER}/${subf}/${subf}_R1.fastq.gz ${INPUT_FOLDER}/${subf}/${subf}_R2.fastq.gz -t ${THREADS} &>> 01-Logs/log_${subf}.txt
+
+    # Filter haplotypes
+    cp 60-Integration/${subf}/abundance.tsv 60-Integration/${subf}/abundance.orig.tsv
+    Rscript ${FILTER_HAPLOTYPES} -i 60-Integration/${subf}/abundance.tsv -c ${CUTOFF} &>> 01-Logs/log_${subf}.txt
+
+    # --------------- #
+    # II. Copy Number #
+    # --------------- #
+
+    # Copy number
+    copyNumber ${INPUT_FOLDER} ${subf}
+
+    # ---------------- #
+    # III. Integration #
+    # ---------------- #
+
+    # CHECK: Absent kallisto output
+    if [ ! -f 60-Integration/${subf}/abundance.tsv ]; then
+      if [ ${VERBOSE} -eq 2 ]; then printf "\n${yellow}WARNING:${normal} Missing kallisto output for ${subf}. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt; fi
+      printf "${subf}\tFailed\tKallisto could not determined the haplotype abundances\n" >> progress.txt
+      # Clean files/folders
+      CleanFiles ${subf} ${INPUT_FOLDER} ${KEEPF}
+      # Date
+      date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
+      echo ""
+      continue
+    fi
+
+    if [ ${VERBOSE} -eq 2 ]; then printf "Integration; "; fi
+    # Log
+    printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
+
+    # Integrate step I and II
+    Rscript ${INTEGRATION} -r 60-Integration/${subf}/abundance.tsv -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m "multiple" &>> 01-Logs/log_${subf}.txt
+
+    # ---------------- #
+    # IV. Fingerprints #
+    # ---------------- #
+
+    # CHECK: Absent integration output
+    if [ ! -f 60-Integration/${subf}/integration.tsv ]; then
+      if [ ${VERBOSE} -eq 2 ]; then printf "\n${yellow}WARNING:${normal} Missing integration output for ${subf}. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt; fi
+      printf "${subf}\tFailed\tIntegration could not be performed\n" >> progress.txt
+      # Clean files/folders
+      CleanFiles ${subf} ${INPUT_FOLDER} ${KEEPF}
+      # Date
+      date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
+      echo ""
+      continue
+    fi
+
+    # Fingerprint
+    fingerPrint 'multiple' ${subf} "No"
+
+  elif [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 && $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) == 1 ]]; then
     # ONE HAPLOTYPE
 
+    if [ ${VERBOSE} -eq 2 ]; then printf "Phasing [Avoid]; "; fi
     if [ ${VERBOSE} -eq 2 ]; then printf "Abundance ratio [Avoid]; "; fi
 
     # --------------- #
@@ -988,7 +1079,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     # ---------------- #
 
     # Fingerprint
-    fingerPrint 'unique' ${subf}
+    fingerPrint 'unique' ${subf} 'None'
 
   else
     # Absent variant file
