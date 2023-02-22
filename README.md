@@ -26,17 +26,10 @@ The pipeline depends on:
 
 __Conda:__
 
-The conda environment is supplemented in the repository. You can create the environment using `conda env create -f SyFi.yml`. Otherwise, you can try creating your own environment using running the following code:
+The conda environment is supplemented in the repository. You can create the environment using `mamba env create -f SyFi.yml`. Otherwise, you can try creating your own environment using running the following code:
 
 ```
-conda create -n SyFi -y
-conda activate SyFi
-conda install -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap=0.17 python=3.6.13 tabix bedtools seqtk
-conda install -c conda-forge r-base r-optparse
-
-# Correct Samtools libcrypto.so error:
-cd {ANACONDA_PATH}/envs/SyFi/lib
-ln -s libcrypto.so.1.1 libcrypto.so.1.0.0
+mamba create -n SyFi -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap python samtools tabix bedtools seqtk r-base r-optparse
 ```
 
 Where *{ANACONDA_PATH}* is the path of your **own anaconda/miniconda** installation.
