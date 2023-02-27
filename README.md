@@ -12,6 +12,7 @@ The pipeline depends on:
 - [Bwa-Mem2](https://github.com/bwa-mem2/bwa-mem2)
 - [Samtools](http://www.htslib.org/)
 - [GATK](https://github.com/broadinstitute/gatk)
+- [Picard](https://github.com/broadinstitute/picard)
 - [BCFtools](https://samtools.github.io/bcftools/)
 - [Whatshap](https://whatshap.readthedocs.io/en/latest/)
 - [SeqKit](https://bioinf.shenwei.me/seqkit/)
@@ -29,7 +30,7 @@ __Conda:__
 The conda environment is supplemented in the repository. You can create the environment using `mamba env create -f SyFi.yml`. Otherwise, you can try creating your own environment using running the following code:
 
 ```
-mamba create -n SyFi -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap python samtools tabix bedtools seqtk r-base r-optparse
+mamba create -n SyFi -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap python samtools tabix bedtools seqtk r-base r-optparse gatk picard
 ```
 
 Where *{ANACONDA_PATH}* is the path of your **own anaconda/miniconda** installation.
@@ -49,17 +50,6 @@ echo 'export PATH="{SOFTWARE_FOLDER_PATH}/jdk-19.0.1/bin:$PATH"' >> $HOME/.bashr
 
 More information on Java (jdk) [here](https://www.oracle.com/java/technologies/jdk-script-friendly-urls/).
 
-
-__GATK:__
-```
-cd {SOFTWARE_FOLDER_PATH}
-wget https://github.com/broadinstitute/gatk/archive/refs/tags/4.2.6.1.tar.gz
-tar -xvzf 4.2.6.1.tar.gz
-echo 'export PATH="{SOFTWARE_FOLDER_PATH}/gatk-4.2.6.1:$PATH"' >> $HOME/.bashrc
-```
-
-For more information on how to install GATK refeer to [GATK-Build](https://github.com/broadinstitute/gatk#building).
-
 ### Download
 
 Download the latest package release. Please, modify the code with your own folder path.
@@ -74,16 +64,16 @@ echo 'export PATH="{SOFTWARE_FOLDER_PATH}/SyFi_{version}/:$PATH"' >> $HOME/.bash
 ### Usage
 
 ```
-./SyFi.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>
+SyFi.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>
 
 REQUIRED:
 # Input
-  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>.
-  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S.
+  -i | --input-folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder-structure>.
+  -s | --search-target    Genomic region of interest in fasta format, e.g., 16S.
 
 OPTIONAL:
 # Haplotype deviation:
-  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp).
+  -l | --len-deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp).
   -c | --cutoff            Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25).
 
 # Input extension:
@@ -91,24 +81,23 @@ OPTIONAL:
   --fastq-extension        Illumina reads file extension (default: fastq.gz).
 
 # Computation:
-  -t  | --threads          Number of threads (default: 1).
-  -mn | --min_memory       Minimum memory required in GB (default: 4GB).
-  -mx | --max_memory       Maximum memory required in GB (default: 8GB).
+  -t | --threads          Number of threads (default: 1).
+  -m | --memory           Memory in GBs (default: 8GB).
 
 # Output options:
-  -k  | --keep_files       Keep temporary files [0: Minimum, 1: BAM's, or 2: All] (default: 0).
-  -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
-  -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0).
+  -k | --keep-files       Keep temporary files [0: Minimum, 1: BAM's, or 2: All] (default: 0).
+  -v | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
+  -f | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0).
 
 # Display:
-  -h  | --help             Display help.
+  -h | --help             Display help.
   --citation               Display citation.
-  --folder_structure       Display required folder structure.
+  --folder-structure       Display required folder structure.
 ```
 
 ### Input
 
-SyFi assumes that the genomes and reads are organized in sub-folders inside of the input folder (-i | --input_folder). Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz). 
+SyFi assumes that the genomes and reads are organized in sub-folders inside of the input folder (-i | --input-folder). Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz). 
 
 ```
 For example:

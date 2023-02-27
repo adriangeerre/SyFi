@@ -5,7 +5,7 @@
 # Created By    : Gijs Selten, Florian Lamouche and Adrián Gómez Repollés
 # Email         : adrian.gomez@mbg.au.dk
 # Created Date  : 06/04/2022 - 07/11/2022
-# version       : '1.0'
+# version       : '1.2'
 # ---------------------------------------------------------------------------
 # Pipeline (bash) to perform fingerprint identification from microbiome data.
 # ---------------------------------------------------------------------------
@@ -21,17 +21,16 @@ function logo() {
   array_force=("None" "All" "Skipped" "Failed")
 
   # Variables
-  if [[ $1 != "help" && $9 != 0 ]]; then
+  if [[ $1 != "help" && $8 != 0 ]]; then
     folder=$1
     target=$2
     lendev=$3
     cutoff=$4
     threads=$5
-    minmem=$6
-    maxmem=$7
-    keepfiles=${array_keep[${8}]}
-    verbose=${array_keep[${9}]}
-    force=${array_force[${10}]}
+    mem=$6
+    keepfiles=${array_keep[${7}]}
+    verbose=${array_keep[${8}]}
+    force=${array_force[${9}]}
 
     # Logo
     echo ""
@@ -47,8 +46,7 @@ function logo() {
     echo "    Cutoff: ${cutoff}"
     echo "    Deviation length: ${lendev}"
     echo "    Threads: ${threads}"
-    echo "    Minimum memory: ${minmem} GB"
-    echo "    Maximum memory: ${maxmem} GB"
+    echo "    Memory: ${mem} GB"
     echo "    Keep files: ${keepfiles}"
     echo "    Verbose: ${verbose}"
     echo "    Force: ${force}"
@@ -61,7 +59,7 @@ function logo() {
     checkProgress ${folder}
     echo "----------------------------------------------"
     echo ""
-  elif [[ $9 != 0 ]]; then
+  elif [[ $8 != 0 ]]; then
     # Logo
     echo ""
     echo "${w}/¯¯¯¯/|¯¯¯| |¯¯¯\ |¯¯¯¯||¯¯¯¯¯¯¯¯¯||¯¯¯¯¯¯¯¯|${n}"
@@ -82,16 +80,16 @@ function usage()
   logo help
 
   # Usage
-  echo "${w}Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>${n}"
+  echo "${w}Usage: $0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>${n}"
   printf "\n"
   echo "${w}REQUIRED:${n}"
   echo "# Input"
-  echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>."
-  echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S."
+  echo "  -i | --input-folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder-structure>."
+  echo "  -s | --search-target    Genomic region of interest in fasta format, e.g., 16S."
   printf "\n"
   echo "${w}OPTIONAL:${n}"
   echo "# Haplotype deviation:"
-  echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
+  echo "  -l | --len-deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
   echo "  -c | --cutoff            Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25)."
   printf "\n"
   echo "# Input extension:"
@@ -99,26 +97,25 @@ function usage()
   echo "  --fastq-extension        Illumina reads file extension (default: fastq.gz)."
   printf "\n"
   echo "# Computation:"
-  echo "  -t  | --threads          Number of threads (default: 1)."
-  echo "  -mn | --min_memory       Minimum memory required in GB (default: 4GB)."
-  echo "  -mx | --max_memory       Maximum memory required in GB (default: 8GB)."
+  echo "  -t | --threads          Number of threads (default: 1)."
+  echo "  -m | --memory           Memory in GBs (default: 8GB)."
   printf "\n"
   echo "# Output options:"
-  echo "  -k  | --keep_files       Keep temporary files [0: Minimum, 1: BAM's, or 2: All] (default: 0)."
-  echo "  -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2)."
-  echo "  -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0)."
+  echo "  -k | --keep-files       Keep temporary files [0: Minimum, 1: BAM's, or 2: All] (default: 0)."
+  echo "  -v | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2)."
+  echo "  -f | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0)."
   printf "\n"
   echo "# Display:"
-  echo "  -h  | --help             Display help."
+  echo "  -h | --help             Display help."
   echo "  --citation               Display citation."
-  echo "  --folder_structure       Display required folder structure."
+  echo "  --folder-structure       Display required folder structure."
   printf "\n"
 }
 
 function folder_structure()
 {
   printf "\n"
-  echo "The pipeline assumes that the genomes and reads are organized in sub-folders inside of the input folder (-i | --input_folder). Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz)."
+  echo "The pipeline assumes that the genomes and reads are organized in sub-folders inside of the input folder (-i | --input-folder). Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz)."
   echo "For example:"
   echo ""
   echo "input_folder/
@@ -156,8 +153,7 @@ normal=$(tput sgr0)
 THREADS=1
 FAEXT='fasta'
 FQEXT='fastq.gz'
-MIN_MEM=4
-MAX_MEM=8
+MEM=8
 BPDEV=300
 CUTOFF=25
 FORCE=0
@@ -173,7 +169,7 @@ INTEGRATION=$(echo ${SYFI_BASE}/src/Integration.R)
 ### Parameters
 
 # display usage if 
-if [[ $# -lt 4  && $1 != "-h" && $1 != "--help" && $1 != "-c" && $1 != "--citation" && $1 != "--folder_structure" ]]; then
+if [[ $# -lt 4  && $1 != "-h" && $1 != "--help" && $1 != "-c" && $1 != "--citation" && $1 != "--folder-structure" ]]; then
   printf "\n${red}ERROR:${normal} You must provided at least the assembly and alignment files.\n"
   usage
   exit 2
@@ -182,17 +178,17 @@ fi
 #Get parameters
 while [[ "$1" > 0 ]]; do
   case $1 in
-    -i | --input_folder)
+    -i | --input-folder)
       shift
       INPUT_FOLDER=$1
       shift
       ;;
-    -s | --search_target)
+    -s | --search-target)
       shift
       SEARCH_TARGET=$1
       shift
       ;;
-    -l | --len_deviation)
+    -l | --len-deviation)
       shift
       BPDEV=$1
       shift
@@ -202,12 +198,12 @@ while [[ "$1" > 0 ]]; do
       CUTOFF=$1
       shift
       ;;
-    --fasta_extension)
+    --fasta-extension)
       shift
       FAEXT=$1
       shift
       ;;
-    --fastq_extension)
+    --fastq-extension)
       shift
       FQEXT=$1
       shift
@@ -217,17 +213,12 @@ while [[ "$1" > 0 ]]; do
       THREADS=$1
       shift
       ;;
-    -mn | --min_mem)
+    -m | --mem)
       shift
-      MIN_MEM=$1
-      shift
-      ;;
-    -mx | --max_mem)
-      shift
-      MAX_MEM=$1
+      MEM=$1
       shift
       ;;
-    -k | --keep_files)
+    -k | --keep-files)
       shift
       KEEPF=$1
       shift
@@ -250,7 +241,7 @@ while [[ "$1" > 0 ]]; do
       citation
       exit
       ;;
-    --folder_structure)
+    --folder-structure)
       folder_structure
       exit
       ;;
@@ -275,7 +266,7 @@ function ctrl_c() {
 ### Checks
 
 # Check: Software dependencies
-software=(blastn bwa-mem2 samtools gzip spades.py seqtk seqkit kallisto Rscript gatk plot-bamstats bcftools)
+software=(blastn bwa-mem2 samtools gzip spades.py seqtk seqkit kallisto Rscript gatk3 picard plot-bamstats bcftools)
 for pckg in ${software[@]}
 do 
   type ${pckg} 2> /dev/null 1>&2 
@@ -348,8 +339,6 @@ function variantCalling() {
   input_bam=$4
   output_dir=$5
   threads=$6
-  min_mem=$7
-  max_mem=$8
 
   # Intro messages
   printf "\n"
@@ -363,12 +352,12 @@ function variantCalling() {
   # Haplotype caller
   printf "\n"
   echo "Haplotype calling"
-  haplotypeCaller ${reference_fasta} ${reference_dict} ${output_dir} ${input_bam} ${max_mem}
+  haplotypeCaller ${reference_fasta} ${reference_dict} ${output_dir} ${input_bam}
 
   # Join genotyping
   printf "\n"
   echo "Join genotyping"
-  jointGenotype ${reference_fasta} ${output_dir} ${threads} ${max_mem} ${min_mem}
+  jointGenotype ${reference_fasta} ${output_dir} ${threads}
 
 }
 
@@ -384,7 +373,7 @@ function markDuplicates() {
   output_fn="${output_dir}/mapped_filtered/${sample}_stats.txt"
 
   # Execution
-  gatk MarkDuplicates -I ${bam_file} -O ${output_dir}/mapped_filtered/${sample}.filtered.bam -M ${output_dir}/mapped_filtered/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}/mapped_filtered
+  picard MarkDuplicates -I ${bam_file} -O ${output_dir}/mapped_filtered/${sample}.filtered.bam -M ${output_dir}/mapped_filtered/${sample}.filtered.bam-metrics.txt -AS --REMOVE_DUPLICATES true --VERBOSITY ERROR --CREATE_INDEX true --TMP_DIR ${output_dir}/mapped_filtered
 
   # Plot BAM
   samtools stats -d ${bam_file} > ${output_fn}
@@ -398,7 +387,6 @@ function haplotypeCaller() {
   reference_dict=$2
   output_dir=$3
   input_bam=$4
-  max_mem=$5
 
   # Variables (-t genomic -m joint -a False -i False)
   sample=$(basename ${input_bam} | cut -d "." -f 1)
@@ -408,17 +396,17 @@ function haplotypeCaller() {
   ploidy=2
   
   # Create dictionary
-  gatk CreateSequenceDictionary -R ${reference_fasta} -O ${reference_dict}
+  picard CreateSequenceDictionary -R ${reference_fasta} -O ${reference_dict}
 
   # Add read group to BAM
-  gatk AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
+  picard AddOrReplaceReadGroups -I ${input_bam} -O ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -LB lib1 -PL ILLUMINA -PU unit1 -SM ${sample}
   samtools index -b ${output_dir}/genotyped/${sample}.filtered.readgroup.bam ${output_dir}/genotyped/${sample}.filtered.readgroup.bai -@ ${threads}
 
-  # Index fasta (without -o for samtools version 1.7 or below)
-  samtools faidx ${reference_fasta} #-o ${reference_fasta}.fai
+  # Index fasta
+  samtools faidx ${reference_fasta}
 
-  # Execution
-  gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir=${output_dir}/genotyped/" HaplotypeCaller -ERC ${erc_mode} --verbosity ERROR -VS LENIENT --native-pair-hmm-threads ${threads} -ploidy ${ploidy} -stand-call-conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -O ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output-mode ${output_mode}
+  # Haplotypes
+  gatk3 -T HaplotypeCaller -ERC ${erc_mode} -ploidy ${ploidy} -stand_call_conf ${min_thr} -I ${output_dir}/genotyped/${sample}.filtered.readgroup.bam -o ${output_dir}/genotyped/${sample}.g.vcf.gz -R ${reference_fasta} --output_mode ${output_mode}
 }
 
 # FUNCTION: Joint Genotyping
@@ -427,8 +415,6 @@ function jointGenotype() {
   reference_fasta=$1
   output_dir=$2
   threads=$3
-  max_mem=$4
-  min_mem=$5
 
   # Variables
   sample=$(basename ${reference_fasta} | sed 's/.fasta//g')
@@ -444,11 +430,10 @@ function jointGenotype() {
   # Create intervals
   cat 20-Alignment/${sample}/${sample}.fasta.fai | awk '{print $1":1-"$2}' > ${intervals_fn}
 
-  gatk --java-options "-Xmx${max_mem}g -Xms${min_mem}g -Djava.io.tmpdir=${output_dir}/variants/" GenomicsDBImport -V ${input_gvcf} -L ${intervals_fn} --tmp-dir ${output_dir}/variants/ --genomicsdb-workspace-path ${workspace_dir} --batch-size 70 --seconds-between-progress-updates 120 --reader-threads ${threads} ${merge_intervals} # Run genotype (Create database)
+  # Run genotype
+  gatk3 -T GenotypeGVCFs -V ${input_gvcf} -R ${reference_fasta} -o ${output_vcf} -L ${intervals_fn} -G StandardAnnotation 
 
-  gatk --java-options "-Xmx${max_mem}g -Djava.io.tmpdir={output_dir}/variants/" GenotypeGVCFs -V gendb://${database} -R ${reference_fasta} -O ${output_vcf} --tmp-dir ${output_dir}/variants/ -L ${intervals_fn} -G StandardAnnotation --seconds-between-progress-updates 120 # Run genotype
-  # bcftools query -l ${output_vcf}
-
+  # VCF Stats
   bcftools stats -F ${reference_fasta} -s- ${output_vcf} > ${comp_fn}
 }
 
@@ -633,7 +618,7 @@ function CleanFiles() {
 #-------------- #
 
 # Call logo
-logo ${INPUT_FOLDER} ${SEARCH_TARGET} ${BPDEV} ${CUTOFF} ${THREADS} ${MIN_MEM} ${MAX_MEM} ${KEEPF} ${VERBOSE} ${FORCE}
+logo ${INPUT_FOLDER} ${SEARCH_TARGET} ${BPDEV} ${CUTOFF} ${THREADS} ${MEM} ${KEEPF} ${VERBOSE} ${FORCE}
 
 for subf in $(ls ${INPUT_FOLDER}); do
  
@@ -767,12 +752,21 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # SPAdes (Unambigous nucleotides assembly)
   printf "\n\n### Contig re-build ###\n\n" >> 01-Logs/log_${subf}.txt
-	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MAX_MEM} &>> 01-Logs/log_${subf}.txt
+	spades.py -1 20-Alignment/${subf}/${subf}_R1.fastq.gz -2 20-Alignment/${subf}/${subf}_R2.fastq.gz -t ${THREADS} -o 20-Alignment/${subf}/spades -m ${MEM} &>> 01-Logs/log_${subf}.txt
 
   # Size select SPAdes recovered target
-  seqtk seq -L ${min_tl} 20-Alignment/${subf}/spades/contigs.fasta > 20-Alignment/${subf}/spades/contigs.seqtk.fasta
+  if [ -f "20-Alignment/${subf}/spades/contigs.fasta" ]; then
+    seqtk seq -L ${min_tl} 20-Alignment/${subf}/spades/contigs.fasta > 20-Alignment/${subf}/spades/contigs.seqtk.fasta
+  else
+    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} by SPAdes. This could be caused by a low number of recovered reads.\n" | tee -a 01-Logs/log_${subf}.txt
+    printf "${subf}\tFailed\tSPAdes did not assembly any target sequence.\n" >> progress.txt
+    date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
+    echo ""
+    continue
+  fi
+  # Check if sequences passed filtering
   if [ $(grep "^>" 20-Alignment/${subf}/spades/contigs.seqtk.fasta | wc -l) -eq 0 ]; then
-    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt
+    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len-deviation\" larger. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt
     printf "${subf}\tSkipped\tRecovered target length below minimum length\n" >> progress.txt
     date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
     echo ""
@@ -797,19 +791,14 @@ for subf in $(ls ${INPUT_FOLDER}); do
   
   # Check if hit was not recovered
   if [ $(cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | wc -l) == 0 ]; then
-    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt
+    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len-deviation\" larger. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt
     printf "${subf}\tSkipped\tRecovered target length below minimum length\n" >> progress.txt
     date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
     echo ""
     continue
   fi
 
-  # Select maximum (in all cases)
-  # cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | sort -n -k14 | tail -n 1 > 20-Alignment/${subf}/flanking/max.tsv
-  # cut -f 1 20-Alignment/${subf}/flanking/max.tsv > 20-Alignment/${subf}/flanking/max.header.txt
-
-  # Select recovered sequence given header of maximum
-  #seqtk subseq 20-Alignment/${subf}/spades/contigs.seqtk.fasta 20-Alignment/${subf}/flanking/max.header.txt > 20-Alignment/${subf}/${subf}.fasta
+  # Select recovered sequence given minimum length
   cp 20-Alignment/${subf}/spades/contigs.seqtk.fasta 20-Alignment/${subf}/${subf}.fasta
 
   # Align
@@ -844,7 +833,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # Variant call
   printf "\n\n### Variant calling ###\n\n" >> 01-Logs/log_${subf}.txt
-  variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} ${MIN_MEM} ${MAX_MEM} &>> 01-Logs/log_${subf}.txt
+  variantCalling 20-Alignment/${subf}/${subf}.rebuild.sort.bam 20-Alignment/${subf}/${subf}.fasta 20-Alignment/${subf}/${subf}.dict 30-VariantCalling/${subf}/mapped_filtered/${subf}.filtered.bam 30-VariantCalling/${subf} ${THREADS} &>> 01-Logs/log_${subf}.txt
 
   # CHECK: No variants recovered
   if [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) != 0 ]]; then
@@ -906,7 +895,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     fi
 
     # Kallisto (Only applied to strains with more that one haplotype)
-    if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "1" ]
+    if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) > 1 ]
     then
       # Create folder
       mkdir -p 60-Integration
@@ -970,6 +959,43 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
       # Fingerprint
       fingerPrint 'multiple' ${subf} 'Yes'
+    # One or several variants but 1 haplotype
+    elif [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) == 1 ]; then
+      
+      if [ ${VERBOSE} -eq 2 ]; then printf "Phasing [Avoid]; "; fi
+      if [ ${VERBOSE} -eq 2 ]; then printf "Abundance ratio [Avoid]; "; fi
+
+      # --------------- #
+      # II. Copy Number #
+      # --------------- #
+
+      # Create folder
+      mkdir -p 60-Integration/${subf}
+
+      # Copy number
+      copyNumber ${INPUT_FOLDER} ${subf}
+
+      # ---------------- #
+      # III. Integration #
+      # ---------------- #
+
+      if [ ${VERBOSE} -eq 2 ]; then printf "Integration [unique]; "; fi
+      # Log
+      printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
+
+      # Create folder
+      mkdir -p 60-Integration/${subf}
+
+      # Integrate only step II 
+      Rscript ${INTEGRATION} -r "None" -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m 'unique' &>> 01-Logs/log_${subf}.txt
+
+      # ---------------- #
+      # IV. Fingerprints #
+      # ---------------- #
+
+      # Fingerprint
+      fingerPrint 'unique' ${subf} 'None'
+
     fi
   # Check: No variants but multiple recovered targets
   elif [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 && $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) > 1 ]]; then

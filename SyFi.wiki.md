@@ -105,6 +105,9 @@ When multiple haplotypes are present, the script integration.R works in the foll
 
 For the moment, the file *progress.txt* is not hidden. That means that the user could modify the file, affecting the execution of the software. This is a double-side sword because users can take advantage of this file to force re-computation of samples but at the same time, if they are not good enough, there modification can cause issues. For example, if you have run a sample through SyFi and later on you remove the corresponding line in *progress.txt*, the sample will be re-computed but the previous files will not be erased. This might cause, issues like files with multiple lines and intermediate errors that will end in Skipped or Failed outcomes.
 
+**SPAdes does not produce a contigs fasta**
+
+I have seen in P1_A8 and P2_G4 that the software crashes (seqtk) because SPAdes does not produce a fasta file. This seems to be caused by a low number of recovered reads (288 and 44, repectively). I have add a check and a label in the progress file ("SPAdes did not assembly any target sequence").
 
 ### SyFi steps:
 
