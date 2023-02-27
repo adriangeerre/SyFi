@@ -82,16 +82,16 @@ function usage()
   logo help
 
   # Usage
-  echo "${w}Usage: ./$0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>${n}"
+  echo "${w}Usage: $0 -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>${n}"
   printf "\n"
   echo "${w}REQUIRED:${n}"
   echo "# Input"
-  echo "  -i  | --input_folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>."
-  echo "  -s  | --search_target    Genomic region of interest in fasta format, e.g., 16S."
+  echo "  -i  | --input-folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder_structure>."
+  echo "  -s  | --search-target    Genomic region of interest in fasta format, e.g., 16S."
   printf "\n"
   echo "${w}OPTIONAL:${n}"
   echo "# Haplotype deviation:"
-  echo "  -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
+  echo "  -l  | --len-deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp)."
   echo "  -c | --cutoff            Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25)."
   printf "\n"
   echo "# Input extension:"
@@ -100,18 +100,18 @@ function usage()
   printf "\n"
   echo "# Computation:"
   echo "  -t  | --threads          Number of threads (default: 1)."
-  echo "  -mn | --min_memory       Minimum memory required in GB (default: 4GB)."
-  echo "  -mx | --max_memory       Maximum memory required in GB (default: 8GB)."
+  echo "  -mn | --min-memory       Minimum memory required in GB (default: 4GB)."
+  echo "  -mx | --max-memory       Maximum memory required in GB (default: 8GB)."
   printf "\n"
   echo "# Output options:"
-  echo "  -k  | --keep_files       Keep temporary files [0: Minimum, 1: BAM's, or 2: All] (default: 0)."
+  echo "  -k  | --keep-files       Keep temporary files [0: Minimum, 1: BAM's, or 2: All] (default: 0)."
   echo "  -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2)."
   echo "  -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0)."
   printf "\n"
   echo "# Display:"
   echo "  -h  | --help             Display help."
   echo "  --citation               Display citation."
-  echo "  --folder_structure       Display required folder structure."
+  echo "  --folder-structure       Display required folder structure."
   printf "\n"
 }
 
@@ -182,17 +182,17 @@ fi
 #Get parameters
 while [[ "$1" > 0 ]]; do
   case $1 in
-    -i | --input_folder)
+    -i | --input-folder)
       shift
       INPUT_FOLDER=$1
       shift
       ;;
-    -s | --search_target)
+    -s | --search-target)
       shift
       SEARCH_TARGET=$1
       shift
       ;;
-    -l | --len_deviation)
+    -l | --len-deviation)
       shift
       BPDEV=$1
       shift
@@ -202,12 +202,12 @@ while [[ "$1" > 0 ]]; do
       CUTOFF=$1
       shift
       ;;
-    --fasta_extension)
+    --fasta-extension)
       shift
       FAEXT=$1
       shift
       ;;
-    --fastq_extension)
+    --fastq-extension)
       shift
       FQEXT=$1
       shift
@@ -217,17 +217,17 @@ while [[ "$1" > 0 ]]; do
       THREADS=$1
       shift
       ;;
-    -mn | --min_mem)
+    -mn | --min-mem)
       shift
       MIN_MEM=$1
       shift
       ;;
-    -mx | --max_mem)
+    -mx | --max-mem)
       shift
       MAX_MEM=$1
       shift
       ;;
-    -k | --keep_files)
+    -k | --keep-files)
       shift
       KEEPF=$1
       shift
@@ -250,7 +250,7 @@ while [[ "$1" > 0 ]]; do
       citation
       exit
       ;;
-    --folder_structure)
+    --folder-structure)
       folder_structure
       exit
       ;;
@@ -772,7 +772,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   # Size select SPAdes recovered target
   seqtk seq -L ${min_tl} 20-Alignment/${subf}/spades/contigs.fasta > 20-Alignment/${subf}/spades/contigs.seqtk.fasta
   if [ $(grep "^>" 20-Alignment/${subf}/spades/contigs.seqtk.fasta | wc -l) -eq 0 ]; then
-    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt
+    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len-deviation\" larger. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt
     printf "${subf}\tSkipped\tRecovered target length below minimum length\n" >> progress.txt
     date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
     echo ""
@@ -797,7 +797,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
   
   # Check if hit was not recovered
   if [ $(cat 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | wc -l) == 0 ]; then
-    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len_deviation\" larger. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt
+    printf "\n${red}ERROR:${normal} No target was recovered for ${subf} or the target recovered was too small. In the second case, make \"-l/--len-deviation\" larger. Computation will be skipped.\n" | tee -a 01-Logs/log_${subf}.txt
     printf "${subf}\tSkipped\tRecovered target length below minimum length\n" >> progress.txt
     date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
     echo ""
@@ -906,7 +906,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     fi
 
     # Kallisto (Only applied to strains with more that one haplotype)
-    if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt "1" ]
+    if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) > 1 ] # ERROR HERE!!! Stops after phasing
     then
       # Create folder
       mkdir -p 60-Integration
@@ -970,6 +970,43 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
       # Fingerprint
       fingerPrint 'multiple' ${subf} 'Yes'
+    # 
+    elif [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) == 1 ]; then
+      
+      if [ ${VERBOSE} -eq 2 ]; then printf "Phasing [Avoid]; "; fi
+      if [ ${VERBOSE} -eq 2 ]; then printf "Abundance ratio [Avoid]; "; fi
+
+      # --------------- #
+      # II. Copy Number #
+      # --------------- #
+
+      # Create folder
+      mkdir -p 60-Integration/${subf}
+
+      # Copy number
+      copyNumber ${INPUT_FOLDER} ${subf}
+
+      # ---------------- #
+      # III. Integration #
+      # ---------------- #
+
+      if [ ${VERBOSE} -eq 2 ]; then printf "Integration [unique]; "; fi
+      # Log
+      printf "\n\n### Integration ###\n\n" >> 01-Logs/log_${subf}.txt
+
+      # Create folder
+      mkdir -p 60-Integration/${subf}
+
+      # Integrate only step II 
+      Rscript ${INTEGRATION} -r "None" -c 60-Integration/${subf}/copy_number.tsv -i ${subf} -m 'unique' &>> 01-Logs/log_${subf}.txt
+
+      # ---------------- #
+      # IV. Fingerprints #
+      # ---------------- #
+
+      # Fingerprint
+      fingerPrint 'unique' ${subf} 'None'
+
     fi
   # Check: No variants but multiple recovered targets
   elif [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 && $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) > 1 ]]; then

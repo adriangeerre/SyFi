@@ -101,6 +101,10 @@ When multiple haplotypes are present, the script integration.R works in the foll
 - In the case the remaining haplotype is below 0.5, we round the proportion to 1 and we define the column "adjusted values" as "Yes". In the column the value "No" means that the values are the original results from the calculations and they have not been adjusted by us.
 - If the proportion is above 0.5, we keep the haplotypes and no further processing is performed.
 
+**Copy Number**
+
+The copy number is computed using the largest recovered 16S sequence from the pool of the recovered sequences. This value will be used to define the start and end of the region of interest. This regions would be extracted from the output of bedtools to count the number of bases covering the region of interest. The head command is introduce to obtain a unique value when there a re multiple recovered sequences with the same length.
+
 **Modification of progress.txt**
 
 For the moment, the file *progress.txt* is not hidden. That means that the user could modify the file, affecting the execution of the software. This is a double-side sword because users can take advantage of this file to force re-computation of samples but at the same time, if they are not good enough, there modification can cause issues. For example, if you have run a sample through SyFi and later on you remove the corresponding line in *progress.txt*, the sample will be re-computed but the previous files will not be erased. This might cause, issues like files with multiple lines and intermediate errors that will end in Skipped or Failed outcomes.
