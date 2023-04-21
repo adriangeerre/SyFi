@@ -453,9 +453,13 @@ function copyNumber() {
 
   # Variables
   # Get length of assembly
-  lgen=$(cat ${INPUT_FOLDER}/${subf}/${subf}.fasta | grep -v "^>" | tr -d "\n" | wc -c)
+  lgen=$(cat ${INPUT_FOLDER}/${subf}/${subf}.${FAEXT} | grep -v "^>" | tr -d "\n" | wc -c)
   # Get number of bases in assembly reads (Speed up?)
-  braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].fastq.gz | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  if [ ${FQEXT} == "fastq.gz" ] || [ ${FQEXT} == "fq.gz" ]; then
+    braw=$(zcat ${INPUT_FOLDER}/${subf}/${subf}_R[12].${FQEXT} | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  else
+    braw=$(cat ${INPUT_FOLDER}/${subf}/${subf}_R[12].${FQEXT} | paste - - - - | cut -f 2 | tr -d "\n" | wc -c)
+  fi
 
   # Get length of longest recovered target without flanking regions
   l16S=$(cut -f 15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | awk 'BEGIN{a=0} {if ($1>0+a) a=$1} END{print a}')
@@ -493,6 +497,9 @@ function fingerPrint() {
     # Log
     if [ ${VERBOSE} -eq 2 ]; then printf "Fingerprint [unique]\n"; fi
     printf "\n\n### Fingerprint ###\n\n" >> 01-Logs/log_${subf}.txt
+
+    # Create haplotype sequence
+    printf ">seq_h1\n$(grep -v "^>" 20-Alignment/${subf}/${subf}.fasta)\n" > 70-Fingerprints/${subf}/seq_h1.fasta
 
     # Copy recovered target
     cp 20-Alignment/${subf}/${subf}.fasta 70-Fingerprints/${subf}/${subf}_all_haplotypes.tmp.fasta
@@ -673,7 +680,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
   # Fastq input
   if [[ ! -f ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} || ! -f ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} ]]; then
-    printf "\n${red}ERROR:${normal} One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq-gz\"." | tee -a 01-Logs/log_${subf}.txt
+    printf "\n${red}ERROR:${normal} One or both illumina reads ${INPUT_FOLDER}/${subf}/${subf}_R[1/2].${FQEXT} are missing, please use the \"-e/--extension\" argument if the extension is not \"fastq.gz\"." | tee -a 01-Logs/log_${subf}.txt
     if [ ${VERBOSE} -eq 2 ]; then printf "\n${yellow}WARNING:${normal} computation will be skipped.\n"; fi
     printf "${subf}\tSkipped\tWrong reads extension\n" >> progress.txt
     continue
@@ -718,11 +725,11 @@ for subf in $(ls ${INPUT_FOLDER}); do
   bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} -t ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.sam
 
   # Sam to BAM
-  samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
+  # samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
   # Sort BAM (Coordinate) for Variant Call
   # samtools sort -o 20-Alignment/${subf}/${subf}.sort.bam -O bam 20-Alignment/${subf}/${subf}.bam -@ ${THREADS} 2>> 01-Logs/log_${subf}.txt
   # Obtain BAM of mapped reads (properly pair)
-  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.bam 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.mapped.bam
+  samtools view -b -q 30 -f 0x2 20-Alignment/${subf}/${subf}.sam 2>> 01-Logs/log_${subf}.txt > 20-Alignment/${subf}/${subf}.mapped.bam
 
   if [ ${VERBOSE} -eq 2 ]; then printf "Reads recovery; "; fi
 
@@ -1131,16 +1138,16 @@ function CreateSummary() {
   if [[ ! -f Summary.tsv ]]; then
 
     # Calculations
-    tl=$(grep -v "^>" ${SEARCH_TARGET} | wc -c)
+    tl=$(grep -v "^>" ${SEARCH_TARGET} | tr -d "\n" | wc -c)
 
     # Header
-    printf "#Isolate\tInput_folder\tTarget_file\tTarget_length\tRecovered_target_length\tLength_deviation\tRecovered_reads\tNumber_SNPs\tCutoff\tNumber_haplotypes\tCopy_number\tHaplotype_ratio\tModified_output\n" > Summary.tsv
+    printf "#Isolate\tInput_folder\tTarget_file\tTarget_length\tRecovered_mean_target_length\tLength_deviation\tRecovered_reads\tNumber_SNPs\tCutoff\tNumber_haplotypes\tCopy_number\tHaplotype_ratio\tModified_output\n" > Summary.tsv
 
     # Loop Success
     if [[ -f progress.txt ]]; then
       for iso in $(grep "Success" progress.txt | cut -f 1); do
         # Variables
-        rtl=$(grep -v "^>" 20-Alignment/${iso}/${iso}.fasta | wc -c)
+        rtl=$(grep -v "^>" 20-Alignment/${iso}/${iso}.fasta | awk '{ print length } | awk '{ total += $1 } END { print total/NR }' ')
         recr1=$(zcat 20-Alignment/${iso}/${iso}_R1.fastq.gz | grep "^@" | wc -l)
         recr2=$(zcat 20-Alignment/${iso}/${iso}_R2.fastq.gz | grep "^@" | wc -l)
         nsnps=$(zcat 30-VariantCalling/${iso}/variants/${iso}.vcf.gz | grep -v "#" | wc -l)
@@ -1151,7 +1158,7 @@ function CreateSummary() {
 
         # Row
         if [[ -f 60-Integration/${iso}/integration.tsv ]]; then
-          printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t${cnum}\t${rhaplo}\t${mod}\n" >> Summary.tsv
+          printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t${%.4f}\t${rhaplo}\t${mod}\n" $cnum >> Summary.tsv
         fi
       done 
     fi
