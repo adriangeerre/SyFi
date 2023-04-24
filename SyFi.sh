@@ -902,7 +902,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
     fi
 
     # Kallisto (Only applied to strains with more that one haplotype)
-    if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) > 1 ]
+    if [ $(grep "^>" 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta | wc -l) -gt 1 ]
     then
       # Create folder
       mkdir -p 60-Integration
@@ -1005,7 +1005,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
     fi
   # Check: No variants but multiple recovered targets
-  elif [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 && $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) > 1 ]]; then
+  elif [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 && $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) -gt 1 ]]; then
 
     if [ ${VERBOSE} -eq 2 ]; then printf "Phasing [Avoid]; "; fi
 
@@ -1147,7 +1147,7 @@ function CreateSummary() {
     if [[ -f progress.txt ]]; then
       for iso in $(grep "Success" progress.txt | cut -f 1); do
         # Variables
-        rtl=$(grep -v "^>" 20-Alignment/${iso}/${iso}.fasta | awk '{ print length } | awk '{ total += $1 } END { print total/NR }' ')
+        rtl=$(grep -v "^>" 20-Alignment/${iso}/${iso}.fasta | awk '{ print length }' | awk '{ total += $1 } END { print total/NR }')
         recr1=$(zcat 20-Alignment/${iso}/${iso}_R1.fastq.gz | grep "^@" | wc -l)
         recr2=$(zcat 20-Alignment/${iso}/${iso}_R2.fastq.gz | grep "^@" | wc -l)
         nsnps=$(zcat 30-VariantCalling/${iso}/variants/${iso}.vcf.gz | grep -v "#" | wc -l)
@@ -1158,7 +1158,7 @@ function CreateSummary() {
 
         # Row
         if [[ -f 60-Integration/${iso}/integration.tsv ]]; then
-          printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t${%.4f}\t${rhaplo}\t${mod}\n" $cnum >> Summary.tsv
+          printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t$%.4f\t${rhaplo}\t${mod}\n" $cnum >> Summary.tsv
         fi
       done 
     fi
@@ -1171,7 +1171,7 @@ function CreateSummary() {
     if [[ -f progress.txt ]]; then
       for iso in $(grep "Success" progress.txt | cut -f 1); do
         # Variables
-        rtl=$(grep -v "^>" 20-Alignment/${iso}/${iso}.fasta | wc -c)
+        rtl=$(grep -v "^>" 20-Alignment/${iso}/${iso}.fasta | awk '{ print length }' | awk '{ total += $1 } END { print total/NR }')
         recr1=$(zcat 20-Alignment/${iso}/${iso}_R1.fastq.gz | grep "^@" | wc -l)
         recr2=$(zcat 20-Alignment/${iso}/${iso}_R2.fastq.gz | grep "^@" | wc -l)
         nsnps=$(zcat 30-VariantCalling/${iso}/variants/${iso}.vcf.gz | grep -v "#" | wc -l)
@@ -1183,11 +1183,11 @@ function CreateSummary() {
         # Strain not present
         if [[ -f 60-Integration/${iso}/integration.tsv ]]; then
           if [[ $(grep -w -e ${iso} Summary.tsv | wc -l) -eq 0 ]]; then
-            printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t${cnum}\t${rhaplo}\t${mod}\n" >> Summary.tsv
+            printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t%.4f\t${rhaplo}\t${mod}\n" $cnum >> Summary.tsv
           # Strain present in the same folder
           elif [[ $(grep -w -e ${iso} Summary.tsv | grep -e ${INPUT_FOLDER} | wc -l) -eq 1 ]]; then
             grep -vw ${iso} Summary.tsv > .tempfile
-            printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t${cnum}\t${rhaplo}\t${mod}\n" >> .tempfile
+            printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t%.4f\t${rhaplo}\t${mod}\n" $cnum >> .tempfile
             mv .tempfile Summary.tsv
           fi
         fi
