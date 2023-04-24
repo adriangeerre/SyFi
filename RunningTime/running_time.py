@@ -112,7 +112,7 @@ def exec(data, cov, rep, threads):
 		# Run SyFi
 		today = datetime.date.today().strftime("%d-%m-%Y")
 		start = time.time()
-		cmd=f"mkdir -p .logs; bash SyFi.sh -i temp_files/{name} -s target.fna -t {threads} --fastq-extension fastq > .logs/{name}_{today}.log"
+		cmd=f"mkdir -p .logs; bash SyFi.sh -i temp_files/{name} -s target.fna -t {threads} -k 2 --fastq-extension fastq > .logs/{name}_{today}.log"
 		subprocess.call(cmd, shell=True)
 		end = time.time()
 		elapsed = end - start
