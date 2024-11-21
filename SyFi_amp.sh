@@ -259,9 +259,6 @@ function checkProgress() {
 
 # Function: Retrieving amplicon from gene marker
 function amplicon() {
-	#THIS SHOULD BE REPLACED BY SYFI ALREADY HAVING QIIME2 INSTALLED
-	#eval "$(conda shell.bash hook)" && conda activate qiime2-2022.8
-
 	# Variables
 	mode=$1 # unique/multiple
 	subf=$2
@@ -461,16 +458,16 @@ for subf in $(ls ${INPUT_FOLDER}); do
 	#Check whether there is only one haplotype or not
 	if [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 && $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) == 1 ]]; then
 
-	# One haplotype
-	amplicon 'unique' ${subf} ${FORWARD_PRIMER} ${REVERSE_PRIMER} ${MINIMUM_LENGTH} ${MAXIMUM_LENGTH}
+		# One haplotype
+		amplicon 'unique' ${subf} ${FORWARD_PRIMER} ${REVERSE_PRIMER} ${MINIMUM_LENGTH} ${MAXIMUM_LENGTH}
 
 	else
-	# Multiple haplotypes
-	amplicon 'multiple' ${subf} ${FORWARD_PRIMER} ${REVERSE_PRIMER} ${MINIMUM_LENGTH} ${MAXIMUM_LENGTH}
+		# Multiple haplotypes
+		amplicon 'multiple' ${subf} ${FORWARD_PRIMER} ${REVERSE_PRIMER} ${MINIMUM_LENGTH} ${MAXIMUM_LENGTH}
  fi
 
  if [ -f 71-Amplicon/${subf}/${subf}_all_haplotypes.fasta ]; then
-	 printf "${subf}\tAmplicon retrieved\n" >> progress_amp.txt
+	printf "${subf}\tAmplicon retrieved\n" >> progress_amp.txt
  fi
 
  CleanFiles ${subf} ${KEEPF}

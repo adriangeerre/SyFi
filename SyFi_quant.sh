@@ -267,9 +267,9 @@ function pseudoalignment() {
 	minscorefraction=$5
 	threads=$6
 
-	printf "\n"
-	echo ${sample}
-	printf "Performing pseudoalignment of reads to fingerprints"
+	if [ ${VERBOSE} -eq 2 ]; then printf "\n"; fi
+	if [ ${VERBOSE} -ge 1 ]; then echo ${sample}; fi
+	if [ ${VERBOSE} -eq 2 ]; then printf "Performing pseudoalignment of reads to fingerprints"; fi
 
 	mkdir -p 80-Pseudoalignment/${sample}
 
@@ -280,7 +280,7 @@ function pseudoalignment() {
 		 salmon quant -i ${fingerprints} -l U -1 ${read_folder}/${sample}/${sample}.fastq.gz --validateMappings -o 80-Pseudoalignment/${sample} --minScoreFraction ${minscorefraction} -p ${threads} &> /dev/null
 	fi
 
-	printf "; Done\n"
+	if [ ${VERBOSE} -eq 2 ]; then printf "; Done\n"; fi
 
 }
 
@@ -352,8 +352,9 @@ mkdir -p 80-Pseudoalignment 90-Output
 # Fingerprint index generation #
 #----------------------------- #
 
+if [ ${VERBOSE} -eq 2 ]; then printf "\nConcatenating fingerprints\n"; fi
+
 #Concatenate all the fingerprints from the fingerprint folder
-printf "\nConcatenating fingerprints\n"
 for subf in $(ls ${FINGERPRINT_FOLDER}); do
 	if [ -f ${fingerprintfolder}/${subf}/${subf}_all_haplotypes.fasta ]; then
 		cat ${fingerprintfolder}/${subf}/${subf}_all_haplotypes.fasta >> 90-Output/SyFi_Fingerprints.fasta
@@ -393,7 +394,8 @@ done
 # Assemble the Salmon output into an isolate table #
 #------------------------------------------------- #
 
-printf "\nCollect pseudoalignment results\n"
+if [ ${VERBOSE} -eq 2 ]; then printf "\nCollect pseudoalignment results\n"; fi
+
 #Retrieve the pseudoaligment hits from Salmon
 for subf in $(ls ${READ_FOLDER}); do
 	cut -f 1,5 80-Pseudoalignment/${subf}/quant.sf > 80-Pseudoalignment/${subf}/output.txt
@@ -404,7 +406,7 @@ done
 files=$(ls 80-Pseudoalignment/*/output.txt)
 
 # Run paste.awk on these files
-awk -f src/paste.awk ${files} > 90-Output/raw_output_table.txt # This command produce a zero!!!
+awk -f src/paste.awk ${files} > 90-Output/raw_output_table.txt
 
 #Remove header from Salmon output 
 sed -i '1d' 90-Output/raw_output_table.txt
@@ -422,8 +424,9 @@ sed -i "1i $samples_header" 90-Output/raw_output_table.txt
 # Normalize for marker copy number #
 #--------------------------------- #
 
+if [ ${VERBOSE} -eq 2 ]; then printf "Normalize pseudoalignment results\n"; fi
+
 # SyFi normalized
-printf "Normalize pseudoalignment results\n"
 normalize_isolate_counts "90-Output/raw_output_table.txt" "90-Output/copy_number.tsv" "90-Output/norm_output_table.txt"
 sed -i '1d' 90-Output/norm_output_table.txt
 sed -i "1i $samples_header" 90-Output/norm_output_table.txt
@@ -432,7 +435,14 @@ sed -i "1i $samples_header" 90-Output/norm_output_table.txt
 # Clean up #
 #--------- #
 
-rm -r Fingerprint_index
-rm -r 80-Pseudoalignment/*/aux_info  80-Pseudoalignment/*/cmd_info.json  80-Pseudoalignment/*/lib_format_counts.json  80-Pseudoalignment/*/libParams  80-Pseudoalignment/*/logs
+if [ ${KEEPF} -eq 0 ]; then
+	rm -r Fingerprint_index &> /dev/null
+	rm -r 80-Pseudoalignment/*/aux_info 80-Pseudoalignment/*/cmd_info.json  80-Pseudoalignment/*/lib_format_counts.json  80-Pseudoalignment/*/libParams  80-Pseudoalignment/*/logs &> /dev/null
+fi
 
-printf "\nSyFi mic-drop\n"
+if [ ${KEEPF} -eq 1 ]; then
+	rm -r Fingerprint_index &> /dev/null
+fi
+
+# END
+if [ ${VERBOSE} -eq 2 ]; then printf "\nSyFi mic-drop\n"; fi
