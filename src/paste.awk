@@ -15,7 +15,7 @@ NF>=2 {
         keynum[$1] = key
         keystr[key] = $1
     }
-    printf "key = %s, file = %s, value = %s\n", key, file, $2 >/dev/stderr
+    printf "key = %s, file = %s, value = %s\n", key, file, $2 > "/dev/null"
     value[key,file] = $2
 }
 END {
