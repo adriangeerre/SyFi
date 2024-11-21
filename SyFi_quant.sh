@@ -24,12 +24,10 @@ function logo() {
 		readfolder=$1
 		fingerprintfolder=$2
 		readtype=$3
-		copynumbernormalization=$4
-		copynumber=$5
-		minscorefraction=$6
-		threads=$7
-		keepfiles=${array_keep[${8}]}
-		verbose=${array_keep[${9}]}
+		minscorefraction=$4
+		threads=$5
+		keepfiles=${array_keep[${6}]}
+		verbose=${array_keep[${7}]}
 
 		# Logo
 		echo ""
@@ -43,8 +41,6 @@ function logo() {
 		echo "    Read folder: ${readfolder}"
 		echo "    Fingerprint folder: ${fingerprintfolder}"
 		echo "    Read type: ${readtype}"
-		echo "    Copy number normalization: ${copynumbernormalization}"
-		echo "    Copy number file: ${copynumber}"
 		echo "    Minimum pseudoalignment identity score: ${minscorefraction}"
 		echo "    Threads: ${threads}"
 		echo "    Keep files: ${keepfiles}"
@@ -90,10 +86,6 @@ function usage()
 	echo "# Read type"
 	echo "  -r  | --read_type                        Paired or single end reads [paired or single] (default: paired)."
 	printf "\n"
-	#echo "# Copy number normalization:"
-	#echo "  -n  | --copy_number_normalization        Whether the microbiome or isolate count table needs to be normalized for marker copy number, and whether the marker copy number should be taken from the SyFi output or from another source [SyFi, other, or no] (default: SyFi)."
-	#echo "  -c  | --copy_number_file                 If user specified 'other' for the marker copy number normalization, here the file should be supplied for the marker copy number. The format of this personalized file should be the name of the SynCom member followed by the marker copy number. For details, execute <pipeline --marker_copy_number_format>."
-	#printf "\n"
 	echo "# Pseudoalignment percentage identity score:"
 	echo "  -m  | --minscorefraction                 Percentage identity score that Salmon uses for pseudoaligning metagenomic reads to the SyFi-generated fingerprints (default: 0.95)."
 	printf "\n"
@@ -190,16 +182,6 @@ while [[ "$1" > 0 ]]; do
 			READ_TYPE=$1
 			shift
 			;;
-		#-n | --copy_number_normalization)
-		#	shift
-		#	COPY_NUMBER_NORMALIZATION=$1
-		#	shift
-		#	;;
-		#-c | --copy_number_file)
-		#	shift
-		#	COPY_NUMBER_FILE=$1
-		#	shift
-		#	;;
 		-m | --minscorefraction)
 			shift
 			MINSCOREFRACTION=$1
@@ -250,7 +232,6 @@ trap ctrl_c INT
 
 function ctrl_c() {
 	printf "\n${red}Execution halted by user.${normal}\n"
-	printf "\n${red}Execution halted by user.${normal}\n" >> 10-Pseudoaligment_logs/log_${subf}.txt
 	exit
 }
 
@@ -355,41 +336,45 @@ normalize_isolate_counts() {
 	# Use awk to perform the normalization
 	awk '
 	BEGIN {
-			FS = "\t"
-			OFS = "\t"
+		FS = "\t"
+		OFS = "\t"
 	}
 
 	# Read copy numbers into an array
 	NR == FNR {
-			if (FNR > 1) { # Skip header line
-					copy_numbers[$1] = $2
-			}
-			next
+		if (FNR > 1) { # Skip header line
+				copy_numbers[$1] = $2
+		}
+		next
 	}
 
 	# Process the count table
 	NR == 1 {
-			header = $0
-			print header
-			next
+		header = $0
+		print header
+		next
 	}
 
 	{
-			asv = $1
-			if (asv in copy_numbers) {
-					copy_number = copy_numbers[asv]
-					printf "%s", asv
-					for (i = 2; i <= NF; i++) {
-						if (copy_number == 0) {
-							printf "\tNaN"
-						} else {
-							printf "\t%.2f", $i / copy_number
-						}
-					}
-					print ""
+	asv = $1
+	if (asv in copy_numbers) {
+		copy_number = copy_numbers[asv]
+		printf "%s", asv
+		for (i = 2; i <= NF; i++) {
+			if (copy_number == 0) {
+				printf "\tNaN"
 			} else {
-					print "ASV not found in copy numbers:", asv
+				printf "\t%.2f", $i / copy_number
 			}
+		}
+		print ""
+	} else {
+		printf "%s", asv
+		for (i = 2; i <= NF; i++) {
+			printf "\tNaN"
+		}
+		print ""
+	}
 	}
 	' "$copy_number_file" "$count_table" > "$output_file"
 }
@@ -401,7 +386,7 @@ normalize_isolate_counts() {
 #---------------------------- #
 
 # Call logo
-logo ${READ_FOLDER} ${FINGERPRINT_FOLDER} ${READ_TYPE} ${COPY_NUMBER_NORMALIZATION} ${COPY_NUMBER_FILE} ${MINSCOREFRACTION} ${THREADS} ${KEEPF} ${VERBOSE}
+logo ${READ_FOLDER} ${FINGERPRINT_FOLDER} ${READ_TYPE} ${MINSCOREFRACTION} ${THREADS} ${KEEPF} ${VERBOSE}
 
 #Make a new directory
 mkdir -p 80-Pseudoalignment 90-Output
@@ -465,7 +450,7 @@ done
 files=$(ls 80-Pseudoalignment/*/output.txt)
 
 # Run paste.awk on these files
-awk -f src/paste.awk ${files} > 90-Output/raw_output_table.txt
+awk -f src/paste.awk ${files} > 90-Output/raw_output_table.txt # This command produce a zero!!!
 
 #Remove header from Salmon output 
 sed -i '1d' 90-Output/raw_output_table.txt
@@ -494,6 +479,6 @@ sed -i "1i $samples_header" 90-Output/norm_output_table.txt
 
 rm -r Fingerprint_index
 rm -r 80-Pseudoalignment/*/aux_info  80-Pseudoalignment/*/cmd_info.json  80-Pseudoalignment/*/lib_format_counts.json  80-Pseudoalignment/*/libParams  80-Pseudoalignment/*/logs
-rm 0
+#rm 0
 
-printf "\nSyFi mic-drop"
+printf "\nSyFi mic-drop\n"
