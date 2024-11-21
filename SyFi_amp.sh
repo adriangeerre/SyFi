@@ -94,20 +94,6 @@ function usage()
 	echo "  -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2)."
 	echo "  -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0)."
 	printf "\n"
-	echo "# Display:"
-	echo "  -h  | --help             Display help."
-	echo "  --citation               Display citation."
-	printf "\n"
-}
-
-function citation()
-{
-	logo help
-	printf "\n"
-	echo "Thank you for using SyFi. Please, cite:"
-	echo ""
-	echo "<Include citation>"
-	printf "\n"
 }
 
 ### Variables
@@ -123,9 +109,6 @@ normal=$(tput sgr0)
 FORCE=0
 KEEPF=0
 VERBOSE=2
-
-# Define software path
-#SYFI_BASE=$(dirname $(whereis ${0} | cut -d " " -f 2))
 
 ### Parameters
 

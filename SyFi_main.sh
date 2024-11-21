@@ -105,40 +105,8 @@ function usage()
 	echo "  -v | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2)."
 	echo "  -f | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0)."
 	printf "\n"
-	echo "# Display:"
-	echo "  -h | --help             Display help."
-	echo "  --citation               Display citation."
-	echo "  --folder-structure       Display required folder structure."
-	printf "\n"
 }
 
-function folder_structure()
-{
-	printf "\n"
-	echo "The pipeline assumes that the genomes and reads are organized in sub-folders inside of the input folder (-i | --input-folder). Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz)."
-	echo "For example:"
-	echo ""
-	echo "input_folder/
-					└── strain_1
-							├── strain_1_R1.fastq.gz
-							├── strain_1_R2.fastq.gz
-							└── strain_1.fasta
-					└── strain_2
-							├── strain_2_R1.fastq.gz
-							├── strain_2_R2.fastq.gz
-							└── strain_2.fasta"
-	printf "\n"
-}
-
-function citation()
-{
-	logo help
-	printf "\n"
-	echo "Thank you for using SyFi. Please, cite:"
-	echo ""
-	echo "<Include citation>"
-	printf "\n"
-}
 
 ### Variables
 

@@ -93,49 +93,6 @@ function usage()
 	echo "  -k  | --keep_files                       Keep temporary files [0: Minimum, 1: Salmon output, or 2: All] (default: 0)."
 	echo "  -v  | --verbose                          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2)."
 	printf "\n"
-	echo "# Display:"
-	echo "  -h  | --help                             Display help."
-	echo "  --citation                               Display citation."
-	echo "  --folder_structure                       Display required folder structure."
-	echo "  --marker_copy_number_format              Display required marker copy number file format"
-	printf "\n"
-}
-
-function folder_structure()
-{
-	printf "\n"
-	echo "The pipeline assumes that the sample reads are organized in sub-folders inside of the input folder (-i | --read_folder). Each sub-folder should contain the reads either in single end or paired end format (with extension .fastq.gz)."
-	echo "For example:"
-	echo ""
-	echo "read_folder/
-					└── sample_1
-							├── sample_1_R1.fastq.gz
-							└── sample_1_R2.fastq.gz
-					└── samplen_2
-							├── sample_2_R1.fastq.gz
-							└── sample_2_R2.fastq.gz"
-	printf "\n"
-}
-
-function marker_copy_number_format()
-{
-	printf "\n"
-	echo "The pipeline takes the marker copy number from the SyFi part 1 output (Summary.tsv) as default (-n SyFi). Personalized marker copy numbers can be supplied as a separate tsv in the following format: "
-	echo ""
-	echo "isolate	copy_number"
-	echo "strain_1	2"
-	echo "strain_2	4"
-	printf "\n"
-}
-
-function citation()
-{
-	logo help
-	printf "\n"
-	echo "Thank you for using SyFi. Please, cite:"
-	echo ""
-	echo "<Include citation>"
-	printf "\n"
 }
 
 ### Variables
@@ -423,9 +380,6 @@ Fingerprint_index="Fingerprint_index"
 # SyFi copy number normalized
 cat Summary.tsv | cut -f1,11 | grep -v "#" | awk '{ $2 = int($2 + 0.5); print }' | sed '1i\isolate\tcopy_number' | sed 's/ /\t/g' >> 90-Output/copy_number.tsv
 
-# Copy number as 1 to use the original values
-ls ${FINGERPRINT_FOLDER} | sed 's/$/\t1/g' |  sed '1i\isolate\tcopy_number' >> copy_number.tsv
-
 #--------------------------- #
 # Pseudoalignment of samples #
 #--------------------------- #
@@ -442,7 +396,7 @@ done
 printf "\nCollect pseudoalignment results\n"
 #Retrieve the pseudoaligment hits from Salmon
 for subf in $(ls ${READ_FOLDER}); do
-	cut -f 1,5 80-Pseudoalignment/${subf}/quant.sf >> 80-Pseudoalignment/${subf}/output.txt
+	cut -f 1,5 80-Pseudoalignment/${subf}/quant.sf > 80-Pseudoalignment/${subf}/output.txt
 done
 
 # Concatenate the single Salmon outputs into a isolate count table
@@ -468,6 +422,7 @@ sed -i "1i $samples_header" 90-Output/raw_output_table.txt
 # Normalize for marker copy number #
 #--------------------------------- #
 
+# SyFi normalized
 printf "Normalize pseudoalignment results\n"
 normalize_isolate_counts "90-Output/raw_output_table.txt" "90-Output/copy_number.tsv" "90-Output/norm_output_table.txt"
 sed -i '1d' 90-Output/norm_output_table.txt
@@ -479,6 +434,5 @@ sed -i "1i $samples_header" 90-Output/norm_output_table.txt
 
 rm -r Fingerprint_index
 rm -r 80-Pseudoalignment/*/aux_info  80-Pseudoalignment/*/cmd_info.json  80-Pseudoalignment/*/lib_format_counts.json  80-Pseudoalignment/*/libParams  80-Pseudoalignment/*/logs
-#rm 0
 
 printf "\nSyFi mic-drop\n"
