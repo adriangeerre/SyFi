@@ -20,6 +20,8 @@ The pipeline depends on:
 - [Kallisto](https://pachterlab.github.io/kallisto/about)
 - [Bedtools](https://bedtools.readthedocs.io/en/latest/)
 - [R](https://www.r-project.org/)
+- [Salmon](https://combine-lab.github.io/salmon/)
+- [Qiime2](https://qiime2.org/)
 
 ## Installation
 
@@ -31,6 +33,19 @@ The conda environment is supplemented in the repository. You can create the envi
 
 ```
 mamba create -n SyFi -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap python samtools tabix bedtools seqtk r-base r-optparse gatk picard
+```
+
+```
+mamba create -n SyFi qiime2::qiime2=2022.8 bioconda::salmon=1.10.0 bioconda::samtools=1.16.1 bioconda::spades=3.15.5 bioconda::whatshap=1.7 bioconda::bcftools=1.16 bioconda::bedtools=2.30.0 bioconda::blast=2.13.0 bioconda::bwa-mem2=2.2.1 bioconda::kallisto=0.48.0 bioconda::picard=2.27.5 bioconda::seqkit=2.3.1 bioconda::seqtk=1.3 bioconda::tabix=1.11 bioconda::gatk conda-forge::r-base conda-forge::r-optparse anaconda::python
+```
+
+```
+conda env create -n SyFi-q2 --file https://data.qiime2.org/distro/core/qiime2-2022.11-py38-linux-conda.yml
+
+conda activate SyFi-q2
+
+mamba install -c conda-forge bioconda::salmon bioconda::spades=3.15.5 bioconda::whatshap=1.7 bioconda::bcftools=1.16 bioconda::bedtools=2.30.0 bioconda::bwa-mem2=2.2.1 bioconda::kallisto=0.48.0 bioconda::picard=2.27.5 bioconda::seqkit=2.3.1 bioconda::seqtk=1.3 bioconda::gatk
+
 ```
 
 Where *{ANACONDA_PATH}* is the path of your **own anaconda/miniconda** installation.
