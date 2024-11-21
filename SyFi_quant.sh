@@ -438,6 +438,9 @@ Fingerprint_index="Fingerprint_index"
 # SyFi copy number normalized
 cat Summary.tsv | cut -f1,11 | grep -v "#" | awk '{ $2 = int($2 + 0.5); print }' | sed '1i\isolate\tcopy_number' | sed 's/ /\t/g' >> 90-Output/copy_number.tsv
 
+# Copy number as 1 to use the original values
+ls ${FINGERPRINT_FOLDER} | sed 's/$/\t1/g' |  sed '1i\isolate\tcopy_number' >> copy_number.tsv
+
 #--------------------------- #
 # Pseudoalignment of samples #
 #--------------------------- #
