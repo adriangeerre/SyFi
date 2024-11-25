@@ -49,9 +49,14 @@ function usage() {
 	printf "\n"
 }
 
-function folder_structure()
-{
+function folder_structure() {
+	# Colors
+	bold=$(tput bold)
+	normal=$(tput sgr0)
+
+	# Main
 	printf "\n"
+	echo "${bold}Main module${normal}"
 	echo "The pipeline assumes that the genomes and reads are organized in sub-folders inside of the input folder. Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz)."
 	echo "For example:"
 	echo ""
@@ -64,6 +69,21 @@ function folder_structure()
     ├── strain_2_R1.fastq.gz
     ├── strain_2_R2.fastq.gz
     └── strain_2.fasta"
+	printf "\n"
+
+	# Quant
+	printf "\n"
+	echo "${bold}Quant module${normal}"
+	echo "The pipeline assumes that the sample reads are organized in sub-folders inside of the input folder (-i | --read_folder). Each sub-folder should contain the reads either in single end or paired end format (.fastq.gz)."
+	echo "For example:"
+	echo ""
+	echo "read_folder/
+  └── sample_1
+    ├── sample_1_R1.fastq.gz
+    └── sample_1_R2.fastq.gz
+  └── samplen_2
+    ├── sample_2_R1.fastq.gz
+    └── sample_2_R2.fastq.gz"
 	printf "\n"
 }
 
