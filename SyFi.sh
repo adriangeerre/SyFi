@@ -99,15 +99,15 @@ function citation()
 
 # Module execution functions
 function main_module() {
-	SyFi_main.sh "$@"
+	src/SyFi_main.sh "$@"
 }
 
 function amplicon_module() {
-	SyFi_amp.sh "$@"
+	src/SyFi_amp.sh "$@"
 }
 
 function quant_module() {
-	SyFi_quant.sh "$@"
+	src/SyFi_quant.sh "$@"
 }
 
 # display whether the obligatory files are called
