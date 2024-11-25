@@ -32,17 +32,9 @@ __Conda:__
 The conda environment is supplemented in the repository. You can create the environment using `mamba env create -f SyFi.yml`. Otherwise, you can try creating your own environment using running the following code:
 
 ```
-mamba create -n SyFi -c bioconda blast bwa-mem2 spades bcftools seqkit kallisto whatshap python samtools tabix bedtools seqtk r-base r-optparse gatk picard
-```
+conda env create -n SyFi --file https://data.qiime2.org/distro/core/qiime2-2022.11-py38-linux-conda.yml
 
-```
-mamba create -n SyFi qiime2::qiime2=2022.8 bioconda::salmon=1.10.0 bioconda::samtools=1.16.1 bioconda::spades=3.15.5 bioconda::whatshap=1.7 bioconda::bcftools=1.16 bioconda::bedtools=2.30.0 bioconda::blast=2.13.0 bioconda::bwa-mem2=2.2.1 bioconda::kallisto=0.48.0 bioconda::picard=2.27.5 bioconda::seqkit=2.3.1 bioconda::seqtk=1.3 bioconda::tabix=1.11 bioconda::gatk conda-forge::r-base conda-forge::r-optparse anaconda::python
-```
-
-```
-conda env create -n SyFi-q2 --file https://data.qiime2.org/distro/core/qiime2-2022.11-py38-linux-conda.yml
-
-conda activate SyFi-q2
+conda activate SyFi
 
 mamba install -c conda-forge bioconda::salmon bioconda::spades=3.15.5 bioconda::whatshap=1.7 bioconda::bcftools=1.16 bioconda::bedtools=2.30.0 bioconda::bwa-mem2=2.2.1 bioconda::kallisto=0.48.0 bioconda::picard=2.27.5 bioconda::seqkit=2.3.1 bioconda::seqtk=1.3 bioconda::gatk
 
@@ -134,7 +126,7 @@ SyFi loops through the samples of the folder and runs the steps in sequential or
 
 ### Output
 
-The default (minimum) output of SyFi (`-k 0`) consist of:
+The default (minimum; k=0) output of SyFi consist of:
 
 - 10-Blast/*{strain}*.tsv
 - 11-Sequences/*{strain}*/*{strain}*.fasta
@@ -149,22 +141,7 @@ The default (minimum) output of SyFi (`-k 0`) consist of:
 - 60-Integration/*{strain}*/integration.tsv
 - 70-Fingerprints/*{strain}*/*{strain}*_all_haplotypes.fasta
 - 70-Fingerprints/*{strain}*/seq_h *{number}*.fasta
-
-In the case the option `-k 1` is defined, some BAM files are kept:
-
-- *{strain}*.rebuild.sort.bam
-- *{strain}*.sort.bam
-
-If the option `-k 2` is used, all the temporary files will be kept.
-
-### Troubleshooting
-
-**Important:** If when running SyFi all the strains shows "WARNING: No target reads were recovered for *{strain}*. Computation will be skipped.", samtools might not be working properly. Please, check if `samtools --version` returns the proper output. If not, check that you run the libcrypto correction mentioned above. Otherwise, try obtaining a working samtools software in your system.
-
-**Important:** If when running SyFi all the strains shows "WARNING: VCF file missing for *{strain}*. Computation will be skipped.", GATK might not be working properly. Please, check if `gatk --version` returns the proper output. If not, install gatk in your system or download the pre-compile version from this repository.
-
-**Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example, by using Blast. This is because the genome/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations. In other words, the consensus sequence "ACGTACGT" might be coming from a) "ACGTACGT" and b) "ACCTACGT" reads in the population. Given that, the "G/C" variant is masked when obtaining the consesus genome/MAG (in this case we have a G), the direct count of 16S haplotypes (in this case 1; a) from the reference could be different that the population 16S haplotypes (in this case 2; a and b).
-
-**Important**: Low quality genomes could be skipped because of: missing or incomplete targets.
-
-**Important**: The file "progress.txt" contains the information for the software to track the computation, the removal of the file will provoke the re-run of all samples even if they were finished (success).
+- 80-Pseudoalignment/*{read_sample}*/quant.sf
+- 90-Output/copy_number.tsv
+- 90-Output/raw_output_table.txt
+- 90-Output/norm_output_table.txt

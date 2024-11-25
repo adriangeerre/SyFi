@@ -155,3 +155,18 @@ I have seen in P1_A8 and P2_G4 that the software crashes (seqtk) because SPAdes 
     1. Concatenate all haplotypes with their defined haplotype ratio using 10xN as delimiter
 12. Clean Files
 13. Create Summary
+
+
+
+
+### Troubleshooting
+
+**Important:** If when running SyFi all the strains shows "WARNING: No target reads were recovered for *{strain}*. Computation will be skipped.", samtools might not be working properly. Please, check if `samtools --version` returns the proper output. If not, check that you run the libcrypto correction mentioned above. Otherwise, try obtaining a working samtools software in your system.
+
+**Important:** If when running SyFi all the strains shows "WARNING: VCF file missing for *{strain}*. Computation will be skipped.", GATK might not be working properly. Please, check if `gatk --version` returns the proper output. If not, install gatk in your system or download the pre-compile version from this repository.
+
+**Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example, by using Blast. This is because the genome/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations. In other words, the consensus sequence "ACGTACGT" might be coming from a) "ACGTACGT" and b) "ACCTACGT" reads in the population. Given that, the "G/C" variant is masked when obtaining the consesus genome/MAG (in this case we have a G), the direct count of 16S haplotypes (in this case 1; a) from the reference could be different that the population 16S haplotypes (in this case 2; a and b).
+
+**Important**: Low quality genomes could be skipped because of: missing or incomplete targets.
+
+**Important**: The file "progress.txt" contains the information for the software to track the computation, the removal of the file will provoke the re-run of all samples even if they were finished (success).
