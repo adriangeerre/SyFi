@@ -2,7 +2,11 @@
 
 ## Pipeline
 
-This pipeline uses Illumina reads, contigs and a sequence target (e.g., 16S) to obtain the target haplotypes abundances ratio.
+SyFi is divided into three sequential modules:
+
+Main: This pipeline uses Illumina reads, contigs and a sequence target (e.g., 16S) to obtain the target haplotypes abundances ratio.
+Amplicon: This pipeline retrieves amplicon fingerprints from the gene fingerprints from the first module using in silico primers.
+Quant: This pipeline takes the results from the first module and quantify the fingerprint abundance from amplicon sequencing data
 
 ## Dependencies
 
@@ -40,8 +44,6 @@ mamba install -c conda-forge bioconda::salmon bioconda::spades=3.15.5 bioconda::
 
 ```
 
-Where *{ANACONDA_PATH}* is the path of your **own anaconda/miniconda** installation.
-
 ### Executable software
 
 For the installation of GATK, we downloaded the pre-compile software from their Github site. In the following code we use the *{SOFTWARE_FOLDER_PATH}* variable to define a potential software folder. Please, modify the code with your own folder path.
@@ -63,43 +65,26 @@ Download the latest package release. Please, modify the code with your own folde
 
 ```
 cd {SOFTWARE_FOLDER_PATH}
-wget https://github.com/adriangeerre/SyFi/releases/download/beta/SyFi_beta.zip
-unzip SyFi_beta.zip
+wget https://github.com/adriangeerre/SyFi/releases/download/beta/SyFi.<latest>.zip
+unzip SyFi.<latest>.zip
 echo 'export PATH="{SOFTWARE_FOLDER_PATH}/SyFi_{version}/:$PATH"' >> $HOME/.bashrc
 ```
 
 ### Usage
 
 ```
-SyFi.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>
+Usage: ./SyFi.sh <MODULE>
 
-REQUIRED:
-# Input
-  -i | --input-folder     Folder containing input genomes and reads. The software assumes that the folder contains sub-folders for each strain. For more details, execute <pipeline --folder-structure>.
-  -s | --search-target    Genomic region of interest in fasta format, e.g., 16S.
+Sequential modules:
+  main:      perform fingerprint identification from microbiome data.
+  amplicon:  retrieve amplicon fingerprints from gene fingerprints using in silico primers.
+  quant:     pseudoalign amplicon sequecing data to firgerprints.
 
-OPTIONAL:
-# Haplotype deviation:
-  -l | --len-deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp).
-  -c | --cutoff            Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25).
+Other:
+  help:      display this help message.
+  citation:  display citation.
+  structure: display folder structure for execution.
 
-# Input extension:
-  --fasta-extension        Reference file extension (default: fasta).
-  --fastq-extension        Illumina reads file extension (default: fastq.gz).
-
-# Computation:
-  -t | --threads          Number of threads (default: 1).
-  -m | --memory           Memory in GBs (default: 8GB).
-
-# Output options:
-  -k | --keep-files       Keep temporary files [0: Minimum, 1: BAM's, or 2: All] (default: 0).
-  -v | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
-  -f | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0).
-
-# Display:
-  -h | --help             Display help.
-  --citation               Display citation.
-  --folder-structure       Display required folder structure.
 ```
 
 ### Input
