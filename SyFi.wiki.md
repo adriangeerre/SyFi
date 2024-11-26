@@ -29,6 +29,8 @@ ___
 - [Introduction](#introduction)
 - [Usage](#usage)
 - [Potential situation](#potential-situations)
+- [SyFi validation dataset](#validation)
+- [SyFi future implementations](#future-implementations)
 
 ### Introduction
 
@@ -48,7 +50,7 @@ The second module of SyFi (SyFi quant) requires the metagenomic reads from the S
 
 The pseudoalignment tool Salmon is used at default settings with the exception of the '--minScoreFraction', which is set at 0.95. This high value allows Salmon to pseudoalign the reads more accurately to highly similar sequences. This is evident when pseudoaligning reads to the fingerprints of two isolates in which both harbor five marker copies, from which one strain has one copy with biological variations that makes it different from the other four copies. Even though the strains are highly similar (sharing four identical marker sequences), the biological variations in the last marker sequence allow distinction between the isolates within a complex SynCom dataset.
 
-[SyFi_Fig2.pdf](https://github.com/user-attachments/files/17921347/SyFi_Fig2.pdf)
+![SyFi_Fig2-1](https://github.com/user-attachments/assets/5ff800c5-f5b1-46b6-a0d8-1095870e65e4)
 
 ### Usage
 
@@ -186,3 +188,19 @@ I have seen in P1_A8 and P2_G4 that the software crashes (seqtk) because SPAdes 
 **Important**: Low quality genomes could be skipped because of: missing or incomplete targets.
 
 **Important**: The file "progress.txt" contains the information for the software to track the computation, the removal of the file will provoke the re-run of all samples even if they were finished (success).
+
+### SyFi Validation dataset
+
+### SyFi Future implementations
+
+SyFi is more accurate than current benchmark methodologies to identify and quantify SynCom isolates, however, we are considering the following implementations to enhance SyFi's performance even further:
+
+- Whatshap has been developed to extract both allele sequences of a gene in diploid organisms. Ergo, the phasing tool in SyFi is restricted to find only one other haplotype per sequence. When SPAdes assembles only one  sequence, whatshap can maximally find two haplotypes, while it can find maximally four haplotypes when SPAdes is able to already build two haplotypes, etc. Future implementations of SyFi may include Whatshap polyphase, a tool that can extract multiple haplotypes of a gene as it has been developed for polyploid organisms.
+
+- As indicated in Appendix 3, SyFi may overestimate the marker gene copy number due to a higher GC content in the marker gene sequence as compared to the rest of the genome. Future implementations may include a copy number normalization based on this marker sequence vs genome GC content. 
+
+- It can still occur that SynCom isolates have identical fingerprints. When generating the Salmon index in SyFi module 2 (SyFi quant), a nonredundant index is created. That means that SyFi may indicate the abundances of one strain, though they might also belong to the strain with an identical fingerprint. We are considering adding another plug-in that indicates which isolates have identical fingerprints and are lost in the second module of SyFi. If the user would like this information in the current version of SyFi, they may implement tools like VSEARCH to investigate which fingerprints are identical.
+
+- Kallisto and Salmon are similar pseudoalignment tools with one crucial difference for SyFi. Salmon allows the changing of the minimum sequence identity score (--minScoreFraction), which we have found to be crucial for SyFi's accuracy when quantifying the SynCom isolates (Figure S5 in the manuscript). In the first implementation of SyFi, we still use kallisto to investigate haplotype abundances in the bacterial genomes. We aim to replace kallisto in this first module by Salmon to maintain consistency in used tools.
+
+- Using different target sequences as input for SyFi module 1 (SyFi main) may lead to different outputs. We are considering including a marker sequence database for the most commonly used marker sequences (e.g. *16S rRNA*, *rpoB*, *recA*, and *gyrB*) spanning the entire bacterial kingdom. This database will be used to taxonomically annotate the bacterial genome and use that information to use the marker sequence of the  phylogenetically closest relative as input for SyFi main. 
