@@ -32,7 +32,23 @@ ___
 
 ### Introduction
 
-...
+**SyFi (SynCom Fingerprinting)** is a bioinformatics workflow designed to enhance the identification and quantification of SynCom isolates in complex datasets. To understand root microbiome assembly, dynamics, and functioning, the plant microbiome field has witnessed the emergence of increasingly complex SynCom datasets that mimick the natural root microbiome complexity. These increasingly complex SynComs often consist of microbial isolates with highly similar marker genes, making it difficult for existing bioinformatics methods to distinguish between them accurately. SyFi overcomes this limitation by creating a "fingerprint" of the sequenced marker gene for each SynCom isolate (Module 1) and using the generated fingerprints as a reference for pseudoalignment of SynCom data reads (Module 2), enabling better resolution of isolates with identical or highly similar marker genes.
+
+*Module 1* 
+The first module of SyFi (SyFi main) requires at least three files to generate fingerprints of a SynCom isolate: 1. the genome of the SynCom isolate, 2. the corresponding genomic reads that were used to assemble the genome, and 3. a target fasta sequence of the marker gene (e.g. the *16S rRNA* gene). SyFi aligns the target to the bacterial genome and extracts the sequence with the highest sequence identity score (BLAST v2.13.0). The genomic reads are mapped to the sequence using BWA with default parameters (v2.2.1), and filtered using Samtools (v1.16.1). The target sequence is then reassembled using SPAdes with default parameters (v3.15.5) to ascertain non-ambiguous bases in the marker sequence. The SPAdes-generated target sequence is subjected to length thresholds and trimmed accordingly (using Samtools v1.16.1). 
+
+The cleaned marker sequence is processed through a variant calling pathway (Picard algorithm (v2.27.5) in GATK software (v3.8)), which finds SNPs, insertions and deletions in the marker sequence. When variants are found in the sequence, Whatshap (v1.7) then investigates the co-occurrence of these variants in the marker sequence, which will lead to multiple haplotypes (Mode 1). When multiple haplotypes are find, either by GATK-Whatshap (Mode 1) or already directly by SPAdes (Mode 2), Kallisto (v0.48.0) is employed to pseudoalign the target reads to both haplotypes and estimate the abundance of each haplotype in the genome. Finally, the copy number of each haplotype is calculated by comparing the marker sequence coverage to the total genomic coverage. The haplotype sequences are then concatenated according to their copy number to generate the fingerprint. 
+
+SyFi fingerprints can best be generated on an entire gene and not a fragment (or amplicon) of a gene. Using *in silico* primers, and the module 'SyFi amplicon', we allow the user to extract the amplicon fingerprint from the original fingerprint generated with SyFi main. 
+
+![SyFi_Fig1](https://github.com/user-attachments/assets/505caf2c-0c23-41b4-a34e-022ff6b39952)
+
+*Module 2*
+The second module of SyFi (SyFi quant) requires the metagenomic reads from the SynCom dataset and the generated marker fingerprints. SyFi first concatenates all fingerprints into one large fasta file. Using the pseudoalignment tool Salmon (v1.4.0), the metagenomic reads are pseudoaligned to the fingerprints to quantify the SynCom isolates. Finally, the marker copy numbers that were calculated in the first module are used to normalize the Salmon counts. 
+
+The pseudoalignment tool Salmon is used at default settings with the exception of the '--minScoreFraction', which is set at 0.95. This high value allows Salmon to pseudoalign the reads more accurately to highly similar sequences. This is evident when pseudoaligning reads to the fingerprints of two isolates in which both harbor five marker copies, from which one strain has one copy with biological variations that makes it different from the other four copies. Even though the strains are highly similar (sharing four identical marker sequences), the biological variations in the last marker sequence allow distinction between the isolates within a complex SynCom dataset.
+
+[SyFi_Fig2.pdf](https://github.com/user-attachments/files/17921347/SyFi_Fig2.pdf)
 
 ### Usage
 
