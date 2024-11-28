@@ -63,7 +63,7 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
 
     OPTIONAL:
     # Haplotype deviation:
-    -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (defaut: 100 bp).
+    -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (default: 100 bp).
 
     # Input extension:
     --fasta-extension        Reference file extension (default: fasta).
@@ -86,7 +86,7 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
 
 ### Length deviation
 
-Explain here how it works and why it is implemented ...
+Before variants are called in the SPAdes-assembled target sequence of the SynCom isolate, the sequence is subjected to a length deviation threshold. This parameter can be tweaked, so the user can customize this according to the length variability that the marker sequence may have across the bacterial kingdom. To ascertain clean and comparable marker gene fingerprints we want to make sure that the target sequence is properly complete.
 
 ### Ratio deviation (cutoff)
 
