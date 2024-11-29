@@ -8,7 +8,7 @@ library("grid") #Version 4.4.2
 library("patchwork") #Version 1.1.2
 
 #Set working_directory and results directory
-working_directory <- "/home/gijs_selten/SyFi_scripts_2024/"
+working_directory <- ""
 dir.create(paste(working_directory, "results", sep = ""))
 results.dir <- paste(working_directory, "results/", sep="")
 
