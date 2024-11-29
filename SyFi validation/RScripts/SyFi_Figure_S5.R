@@ -47,7 +47,8 @@ for (metric in vector_2) {
   samples_meta <- samples_meta %>% dplyr::select(-sample_id)
   
   #Insert clusters file
-  clusters = read.csv(paste0(working_directory,"vsearch_clusters_minscorefraction/collapse_",metric, ".txt",sep=""), header=F, sep="\t")
+  metric_2 <- strsplit(paste(metric), "_")[[1]][2]
+  clusters = read.csv(paste0(working_directory,"vsearch_clusters/collapse_SyFi_",metric_2, ".txt",sep=""), header=F, sep="\t")
   
   #Reformatting table of interest 
   no_of_isolates <- length(row.names(clusters))
