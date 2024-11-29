@@ -86,11 +86,16 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
 
 ### Length deviation
 
-Before variants are called in the SPAdes-assembled target sequence of the SynCom isolate, the sequence is subjected to a length deviation threshold. This parameter can be tweaked, so the user can customize this according to the length variability that the marker sequence may have across the bacterial kingdom. To ascertain clean and comparable marker gene fingerprints we want to make sure that the target sequence is properly complete.
+Before variants are called in the SPAdes-assembled target sequence of the SynCom isolate, the sequence is subjected to a length deviation threshold. This parameter can be tweaked, so the user can customize this according to the length variability that the marker sequence may have across the bacterial kingdom. 
+
+Reasons to change the length deviation parameter:
+
+-Decreasing the length deviation ascertains more clean and comparable marker gene fingerprints. This way we only include complete target genes and target genes with unclear boundaries. 
+-Increasing the length deviation is necessary when the length of the marker sequence can vary substantially between bacterial taxa. Another reason to increase the length deviation is when working with a big proportion of incomplete genome assemblies. SyFi might not be able to find many clean and complete target sequences from incomplete genome assemblies when the length deviation is too strict. A more lenient length deviation may overcome this, though may also increase the risk of incorporating marker sequences deriving from contaminating contigs. 
 
 ### Ratio deviation (cutoff)
 
-...
+When calculating the proportion of marker sequence haplotypes in the bacterial genome, a threshold is implemented to avoid unrealistic marker sequence copy numbers that may derive from biological contamination or technical errors. E.g. contaminating reads or PCR errors may lead to the construction of a haplotype that isn't not part of the bacterial genome; a biological or technical artifact. Due to the rarity of these errors among the marker sequence reads, the haplotype proportion may indicate how the actual marker sequence haplotype is a 100-fold more present than the haplotype deriving from these artifacts. A ratio deviation cutoff provides a treshold (e.g. the default is 25) to ensure SyFi doesn't provide a copy number of 100, but instead removes the rare (technical error-derived) haplotype and recalculates the proportion to a biological more meaningful amount.
 
 ### Potential situations
 
@@ -190,6 +195,10 @@ I have seen in P1_A8 and P2_G4 that the software crashes (seqtk) because SPAdes 
 **Important**: The file "progress.txt" contains the information for the software to track the computation, the removal of the file will provoke the re-run of all samples even if they were finished (success).
 
 ### SyFi Validation dataset
+
+To provide evidence for SyFi's improved accuracy in disentangling complex SynCom datasets, we ran SyFi's Module 1 on a collection of 447 Arabidopsis-derived bacterial genomes (NCBI Project numbers PRJNA1138681, PRJNA1139421 (Genomes), and PRJNA1131834 (Genomic reads)). Subsequently, we used SyFi's Module 2 on a complex SynCom dataset that inoculated these 447 bacterial isolates on Arabidopsis, Barley, and Lotus roots by pseudoalignment of *16S rRNA* V3-V4 and V5-V7 amplicon reads to the SyFi-generated fingerprints (PRJNA1191388) and compared the SynCom isolate counts to a shotgun metagenomics-sequenced dataset of the same samples (PRJNA1131994).
+
+The output of these results can be found in the 'SyFi validation' folder on this GitHub. This folder contains the generated datasets that were compared and the Rscripts that were used to generate the figures used in the SyFi manuscript.
 
 ### SyFi Future implementations
 
