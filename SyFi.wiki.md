@@ -30,7 +30,7 @@ ___
 - [Usage](#usage)
 - [Potential situation](#potential-situations)
 - [SyFi validation dataset](#syfi-validation-dataset)
-- [SyFi future implementations](#future-implementations)
+- [SyFi future implementations](#syfi-future-implementations)
 
 ### Introduction
 
