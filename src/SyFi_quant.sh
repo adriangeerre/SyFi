@@ -4,7 +4,7 @@
 #----------------------------------------------------------------------------
 # Created By    : Gijs Selten, Florian Lamouche and Adrián Gómez Repollés
 # Email         : adrian.gomez@mbg.au.dk / g.selten@uu.nl
-# Created Date  : 06/04/2022 - 07/11/2022
+# Created Date  : 01/10/2024
 # version       : '1.0'
 # ---------------------------------------------------------------------------
 # Pipeline (bash) to perform fingerprint identification from microbiome data.
@@ -75,7 +75,7 @@ function usage()
 	logo help
 
 	# Usage
-	echo "Usage: ./$0 -i <READ_FOLDER> -f <FINGERPRINT_FOLDER> -t <THREADS>"
+	echo "Usage: SyFi.sh quant -i <READ_FOLDER> -f <FINGERPRINT_FOLDER> -t <THREADS>"
 	printf "\n"
 	echo "${bold}REQUIRED:${normal}"
 	echo "# Input"
@@ -182,7 +182,6 @@ while [[ "$1" > 0 ]]; do
 			;;
 	esac
 done
-
 
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
@@ -356,11 +355,23 @@ if [ ${VERBOSE} -eq 2 ]; then printf "\nConcatenating fingerprints\n"; fi
 
 #Concatenate all the fingerprints from the fingerprint folder
 for subf in $(ls ${FINGERPRINT_FOLDER}); do
-	if [ -f ${fingerprintfolder}/${subf}/${subf}_all_haplotypes.fasta ]; then
+
+	## CHECK: Log file
+	if [[ -f "01-Logs/quant/log_${subf}.txt" ]]; then
+		# Remove old log file
+		rm -rf 01-Logs/quant/log_${subf}.txt
+		touch 01-Logs/quant/log_${subf}.txt
+	else
+		# Touch Log File
+		mkdir -p 01-Logs/quant
+		touch 01-Logs/quant/log_${subf}.txt
+	fi
+
+	if [ -f "${fingerprintfolder}/${subf}/${subf}_all_haplotypes.fasta" ]; then
 		cat ${fingerprintfolder}/${subf}/${subf}_all_haplotypes.fasta >> 90-Output/SyFi_Fingerprints.fasta
 		printf "\n" >> 90-Output/SyFi_Fingerprints.fasta
 	else
-		printf "Warning: ${fingerprintfolder}/${subf}/${subf}_all_haplotypes.fasta is missing.\n"
+		printf "Warning: ${fingerprintfolder}/${subf}/${subf}_all_haplotypes.fasta is missing.\n" >>  01-Logs/quant/log_${subf}.txt
 	fi
 done
 
@@ -371,7 +382,7 @@ sed -i 's/_ALL_HAPLOTYPES//' 90-Output/SyFi_Fingerprints.fasta
 
 
 #Build Salmon index
-salmon index -t 90-Output/SyFi_Fingerprints.fasta -i Fingerprint_index -k 31 &> /dev/null
+salmon index -t 90-Output/SyFi_Fingerprints.fasta -i Fingerprint_index -k 31 &>> 01-Logs/quant/log_salmon.txt
 Fingerprint_index="Fingerprint_index"
 
 #------------------------ #
@@ -406,7 +417,7 @@ done
 files=$(ls 80-Pseudoalignment/*/output.txt)
 
 # Run paste.awk on these files
-awk -f src/paste.awk ${files} > 90-Output/raw_output_table.txt
+awk -f paste.awk ${files} > 90-Output/raw_output_table.txt
 
 #Remove header from Salmon output 
 sed -i '1d' 90-Output/raw_output_table.txt

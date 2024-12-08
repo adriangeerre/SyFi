@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 #----------------------------------------------------------------------------
 # Created By    : Gijs Selten, Florian Lamouche and Adrián Gómez Repollés
-# Email         : adrian.gomez@mbg.au.dk
+# Email         : adrian.gomez@mbg.au.dk / g.selten@uu.nl
 # Created Date  : 06/04/2022 - 07/11/2022
 # version       : '2.0'
 # ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ function usage() {
 	logo help
 
 	# Usage
-	echo "Usage: ./$0 <MODULE>"
+	echo "Usage: SyFi.sh <MODULE>"
 
 	# Modules
 	printf "\n"

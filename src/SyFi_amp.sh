@@ -4,7 +4,7 @@
 #----------------------------------------------------------------------------
 # Created By    : Gijs Selten, Florian Lamouche and Adrián Gómez Repollés
 # Email         : adrian.gomez@mbg.au.dk / g.selten@uu.nl
-# Created Date  : 
+# Created Date  : 01/10/2024
 # version       : '1.0'
 # ---------------------------------------------------------------------------
 # Pipeline (bash) to retrieve amplicon fingerprints from gene fingerprints using in silico primers
@@ -78,7 +78,7 @@ function usage()
 	logo help
 
 	# Usage
-	echo "Usage: ./$0 -i <INPUT_FOLDER> -f <FORWARD_PRIMER> -r <REVERSE_PRIMER> -n <MINIMUM_LENGTH> -x <MAXIMUM_LENGTH>"
+	echo "Usage: SyFi.sh amplicon -i <INPUT_FOLDER> -f <FORWARD_PRIMER> -r <REVERSE_PRIMER> -n <MINIMUM_LENGTH> -x <MAXIMUM_LENGTH>"
 	printf "\n"
 	echo "${bold}REQUIRED:${normal}"
 	echo "# Input"
@@ -109,6 +109,7 @@ normal=$(tput sgr0)
 FORCE=0
 KEEPF=0
 VERBOSE=2
+DATE=$(date +"%d-%m-%Y_%H-%M-%S")
 
 ### Parameters
 
@@ -178,12 +179,23 @@ while [[ "$1" > 0 ]]; do
 	esac
 done
 
+## CHECK: Log file
+if [[ -f 01-Logs/amplicon/log_${DATE}.txt ]]; then
+	# Remove old log file
+	rm -rf 01-Logs/amplicon/log_${DATE}.txt
+	touch 01-Logs/amplicon/log_${DATE}.txt
+else
+	# Touch Log File
+	mkdir -p 01-Logs/amplicon
+	touch 01-Logs/amplicon/log_${DATE}.txt
+fi
+
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
 
 function ctrl_c() {
 	printf "\n${red}Execution halted by user.${normal}\n"
-	printf "\n${red}Execution halted by user.${normal}\n" >> 01-Logs/log_${subf}.txt
+	printf "\n${red}Execution halted by user.${normal}\n" >> 01-Logs/amplicon/log_${DATE}.txt
 	exit
 }
 
@@ -273,7 +285,7 @@ function amplicon() {
 	if [ $mode == "unique" ];then
 	 # Log
 	 if [ ${VERBOSE} -eq 2 ]; then printf "Retrieving amplicon from single haplotype\n"; fi
-	 printf "\n\n### Amplicon ###\n\n" >> 01-Logs/log_${subf}.txt
+	 printf "\n\n### Amplicon ###\n\n" >> 01-Logs/amplicon/log_${DATE}.txt
 
 	 # Set input sequence for amplicon retrieval
 	 GENPATH=70-Fingerprints/${subf}
@@ -311,7 +323,7 @@ function amplicon() {
 	elif [ $mode == "multiple" ];then
 		# Log
 		if [ ${VERBOSE} -eq 2 ]; then printf "Retrieving amplicons from multiple haplotypes\n"; fi
-		printf "\n\n### Amplicon ###\n\n" >> 01-Logs/log_${subf}.txt
+		printf "\n\n### Amplicon ###\n\n" >> 01-Logs/amplicon/log_${DATE}.txt
 
 		# Set input sequence for amplicon retrieval
 	 GENPATH=70-Fingerprints/${subf}
@@ -387,7 +399,7 @@ function CleanFiles() {
 	KEEPF=$2
 
 	# Array
-	keep=("./01-Logs/log_${SAMPLE}.txt" "./10-Blast/${SAMPLE}.tsv" "./11-Sequences/${SAMPLE}/${SAMPLE}.fasta" "./20-Alignment/${SAMPLE}/${SAMPLE}.fasta" "./20-Alignment/${SAMPLE}/${SAMPLE}_R1.fastq.gz" "./20-Alignment/${SAMPLE}/${SAMPLE}_R2.fastq.gz" "./30-VariantCalling/${SAMPLE}/variants/${SAMPLE}.vcf.gz" "./40-Phasing/${SAMPLE}/${SAMPLE}_phased.vcf.gz" "./50-Haplotypes/${SAMPLE}/clean_${SAMPLE}_haplotypes.fasta" "./60-Integration/${SAMPLE}/abundance.tsv" "./60-Integration/${SAMPLE}/copy_number.tsv" "./60-Integration/${SAMPLE}/integration.tsv" "./70-Fingerprints/${SAMPLE}/${SAMPLE}_all_haplotypes.fasta" "./71-Amplicon/${SAMPLE}/${SAMPLE}_all_haplotypes.fasta")
+	keep=("./01-Logs/amplicon/log_${DATE}.txt" "./10-Blast/${SAMPLE}.tsv" "./11-Sequences/${SAMPLE}/${SAMPLE}.fasta" "./20-Alignment/${SAMPLE}/${SAMPLE}.fasta" "./20-Alignment/${SAMPLE}/${SAMPLE}_R1.fastq.gz" "./20-Alignment/${SAMPLE}/${SAMPLE}_R2.fastq.gz" "./30-VariantCalling/${SAMPLE}/variants/${SAMPLE}.vcf.gz" "./40-Phasing/${SAMPLE}/${SAMPLE}_phased.vcf.gz" "./50-Haplotypes/${SAMPLE}/clean_${SAMPLE}_haplotypes.fasta" "./60-Integration/${SAMPLE}/abundance.tsv" "./60-Integration/${SAMPLE}/copy_number.tsv" "./60-Integration/${SAMPLE}/integration.tsv" "./70-Fingerprints/${SAMPLE}/${SAMPLE}_all_haplotypes.fasta" "./71-Amplicon/${SAMPLE}/${SAMPLE}_all_haplotypes.fasta")
 
 	# Remove files
 	if [ ${KEEPF} -eq 0 ]; then
@@ -450,10 +462,10 @@ mkdir -p 71-Amplicon
 for subf in $(ls ${INPUT_FOLDER}); do
 
 	# Continue with old log file
-	touch 01-Logs/log_${subf}.txt
+	touch 01-Logs/amplicon/log_${DATE}.txt
 
-	if [ ${VERBOSE} -ge 1 ]; then date "+start time: %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt; fi
-	if [ ${VERBOSE} -ge 1 ]; then printf "${blue}Sample:${normal} $subf\n" | tee -a 01-Logs/log_${subf}.txt; fi
+	if [ ${VERBOSE} -ge 1 ]; then date "+start time: %H:%M:%S" | tee -a 01-Logs/amplicon/log_${DATE}.txt; fi
+	if [ ${VERBOSE} -ge 1 ]; then printf "${blue}Sample:${normal} $subf\n" | tee -a 01-Logs/amplicon/log_${DATE}.txt; fi
 
 	#Check whether there is only one haplotype or not
 	if [[ -f 30-VariantCalling/${subf}/variants/${subf}.vcf.gz && $(zcat 30-VariantCalling/${subf}/variants/${subf}.vcf.gz | grep -v "#" | wc -l) == 0 && $(grep "^>" 20-Alignment/${subf}/${subf}.fasta | wc -l) == 1 ]]; then
@@ -472,7 +484,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 
  CleanFiles ${subf} ${KEEPF}
 
- date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/log_${subf}.txt
+ date "+end time: %d/%m/%Y - %H:%M:%S" | tee -a 01-Logs/amplicon/log_${DATE}.txt
  echo ""
 
 done
