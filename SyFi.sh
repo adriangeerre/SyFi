@@ -97,17 +97,21 @@ function citation()
 	printf "\n"
 }
 
+# Define location of script to identify src folder
+actual_script=$(which $0)
+actual_path=$(dirname ${actual_script})
+
 # Module execution functions
 function main_module() {
-	src/SyFi_main.sh "$@"
+	${actual_path}/src/SyFi_main.sh "$@"
 }
 
 function amplicon_module() {
-	src/SyFi_amp.sh "$@"
+	${actual_path}/src/SyFi_amp.sh "$@"
 }
 
 function quant_module() {
-	src/SyFi_quant.sh "$@"
+	${actual_path}/src/SyFi_quant.sh "$@"
 }
 
 # display whether the obligatory files are called
