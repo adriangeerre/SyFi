@@ -300,17 +300,17 @@ function amplicon() {
 		qiime tools import \
 			 --input-path $file \
 			 --output-path $QZAPATH/${FNAME}.qza \
-			 --type 'FeatureData[Sequence]'
+			 --type 'FeatureData[Sequence]' &>> 01-Logs/amplicon/log_${DATE}.txt
 		qiime feature-classifier extract-reads \
 			 --i-sequences $QZAPATH/${FNAME}.qza \
 			 --p-f-primer ${fpprimer} \
 			 --p-r-primer ${rpprimer} \
 			 --p-min-length ${minlength} \
 			 --p-max-length ${maxlength} \
-			 --o-reads $QZAPATH/${FNAME}_amp.qza
+			 --o-reads $QZAPATH/${FNAME}_amp.qza &>> 01-Logs/amplicon/log_${DATE}.txt
 		qiime tools export \
 			 --input-path $QZAPATH/${FNAME}_amp.qza \
-			 --output-path $OUTPATH/${FNAME}_amp.fna
+			 --output-path $OUTPATH/${FNAME}_amp.fna &>> 01-Logs/amplicon/log_${DATE}.txt
 
 		#Clean up the folder
 		mv $OUTPATH/${FNAME}_amp.fna/* $OUTPATH/${FNAME}.fasta
@@ -338,17 +338,17 @@ function amplicon() {
 		qiime tools import \
 			 --input-path $file \
 			 --output-path $QZAPATH/${FNAME}.qza \
-			 --type 'FeatureData[Sequence]'
+			 --type 'FeatureData[Sequence]' &>> 01-Logs/amplicon/log_${DATE}.txt
 		qiime feature-classifier extract-reads \
 			 --i-sequences $QZAPATH/${FNAME}.qza \
 			 --p-f-primer ${fpprimer} \
 			 --p-r-primer ${rpprimer} \
 			 --p-min-length ${minlength} \
 			 --p-max-length ${maxlength} \
-			 --o-reads $QZAPATH/${FNAME}_amp.qza
+			 --o-reads $QZAPATH/${FNAME}_amp.qza &>> 01-Logs/amplicon/log_${DATE}.txt
 		qiime tools export \
 			 --input-path $QZAPATH/${FNAME}_amp.qza \
-			 --output-path $OUTPATH/${FNAME}_amp.fna
+			 --output-path $OUTPATH/${FNAME}_amp.fna &>> 01-Logs/amplicon/log_${DATE}.txt
 
 		#Clean up the folder
 		mv $OUTPATH/${FNAME}_amp.fna/* $OUTPATH/${FNAME}.fasta
