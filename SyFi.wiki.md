@@ -128,18 +128,12 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
 
     # Computation:
     -t  | --threads          Number of threads (default: 1).
-    -mn | --min_memory       Minimum memory required in GB (default: 4GB).
-    -mx | --max_memory       Maximum memory required in GB (default: 8GB).
+    -m  | --memory           Mmemory in GBs (default: 8GB).
 
     # Output options:
     -k  | --keep_files       Keep temporary files [0: None, 1: BAM's, or 2: All] (default: 0).
     -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
     -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0).
-
-    # Display:
-    -h  | --help             Display help.
-    -c  | --citation         Display citation.
-    --folder_structure       Display required folder structure.
 
 *SyFi amplicon*
 
@@ -154,13 +148,9 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
     -x  | --maximum_length    Maximum length of the amplicon of interest.
 
     # Output options
-    -v  | --verbose    Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
-    
-    # Display:
-    -h  | --help    Display help.
-    --citation    Display citation.
-    
-
+    -k  | --keep_files       Keep temporary files [0: None, 1: BAM's, or 2: All] (default: 0).
+    -v  | --verbose          Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
+    -f  | --force            Force re-computation of computed samples [0: None, 1: All, 2: Skipped, or 3: Failed] (default: 0).
 
 *SyFi quant*
 
@@ -182,11 +172,6 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
     -k  | --keep_files    Keep temporary files [0: Minimum, 1: Salmon output, or 2: All] (default: 0).
     -v  | --verbose    Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
  
-    # Display:
-    -h  | --help                             Display help.
-    --citation                               Display citation.
-    --folder_structure                       Display required folder structure.
-
 
 ### Length deviation
 
