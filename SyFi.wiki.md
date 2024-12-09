@@ -1,29 +1,5 @@
 # SyFi
 
-Markdown rules:
-
-Url: [Markdown rules!](https://www.markdownguide.org/basic-syntax)
-
-**Bold**
-*Italics*
-> Quote!
-
-1. Order List
-2. Order List
-    1. SubList
-
-- UnOrder
-- UnOrder
-    - UnOrder
-
-`Line of code!`
-
-    block
-    of
-    code
-
-___
-
 ## Table of content:
 
 - [Introduction](#introduction)
@@ -144,7 +120,7 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
     OPTIONAL:
     # Haplotype deviation:
     -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (default: 100 bp).
-    -c | --cutoff    Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25).
+    -c  | --cutoff    Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25).
     
     # Input extension:
     --fasta-extension        Reference file extension (default: fasta).
