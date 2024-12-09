@@ -127,6 +127,8 @@ The default (minimum; k=0) output of SyFi consist of:
 - 60-Integration/*{strain}*/integration.tsv
 - 70-Fingerprints/*{strain}*/*{strain}*_all_haplotypes.fasta
 - 70-Fingerprints/*{strain}*/seq_h *{number}*.fasta
+- 70-Amplicon/{strain}/{strain}_all_haplotypes.fasta
+- 71-Amplicon/{strain}/seq_h {number}.fasta
 - 80-Pseudoalignment/*{read_sample}*/quant.sf
 - 90-Output/copy_number.tsv
 - 90-Output/raw_output_table.txt
