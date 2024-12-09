@@ -43,7 +43,7 @@ conda activate SyFi
 mamba install -c conda-forge bioconda::salmon bioconda::spades=3.15.5 bioconda::whatshap=1.7 bioconda::bcftools=1.16 bioconda::bedtools=2.30.0 bioconda::bwa-mem2=2.2.1 bioconda::kallisto=0.48.0 bioconda::picard=2.27.5 bioconda::seqkit=2.3.1 bioconda::seqtk=1.3 bioconda::gatk
 
 ```
-SyFi's second module (SyFi amplicon) makes use of Qiime2 to *in silico* extract the amplicon sequences from the SyFi-generated haplotypes to build an amplicon fingerprint. For that reason Qiime2 is first installed in the SyFi environment before installing all other remaining packages. 
+SyFi's second module (SyFi amplicon) makes use of Qiime2 to *in silico* extract the amplicon sequences from the SyFi-generated haplotypes, which are subsequently used to build the amplicon fingerprint. For that reason Qiime2 is first installed in the SyFi environment before installing all other remaining packages. 
 
 ### Executable software
 
