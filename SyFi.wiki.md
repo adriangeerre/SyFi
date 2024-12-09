@@ -29,7 +29,7 @@ ___
 - [Introduction](#introduction)
 - [Usage](#usage)
 - [Potential situations](#potential-situations)
-- [Explanation of summary.txt and progress.txt](#explanation-of-summary-txt-and-progress-txt)
+- [Explanation of summary and progress text files](#explanation-of-summary-and-progress-text-files)
 - [SyFi validation dataset](#syfi-validation-dataset)
 - [SyFi future implementations](#syfi-future-implementations)
 
@@ -113,7 +113,7 @@ When running SyFi you might encounter different situations for your strains:
 The situations are recovered in the file *progress.txt* which it is used to define the strains to run through the workflow. If the strain has a label attached to it, then the argument `-f/--force` must be used to re-run the workflow. If there is no label, the workflow will be run over the strain. This implementation avoids re-computation of results and provides continuity.
 
 
-### Explanation of summary.txt and progress.txt
+### Explanation of summary and progress text files
 
 **Integration 2**
 
