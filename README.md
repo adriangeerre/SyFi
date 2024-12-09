@@ -90,7 +90,7 @@ Other:
 
 ### Input
 
-SyFi assumes that the genomes and reads are organized in sub-folders inside of the input folder (-i | --input-folder). Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz). 
+SyFi main assumes that the genomes and reads are organized in sub-folders inside of the input folder (-i | --input-folder). Each sub-folder should contain the genome (.fasta) and the reads (.fastq.gz). 
 
 ```
 For example:
@@ -108,7 +108,23 @@ For example:
 
 ```
 
-SyFi loops through the samples of the folder and runs the steps in sequential order. It will run each sample one time and categorize it in *Success*, *Skipped* or *Failed*. Once, it runs over all samples, the option "-f | --force" must be used to re-run the sample through SyFi steps.
+SyFi main loops through the samples of the folder and runs the steps in sequential order. It will run each sample one time and categorize it in *Success*, *Skipped* or *Failed*. Once, it runs over all samples, the option "-f | --force" must be used to re-run the sample through SyFi steps.
+
+SyFi quant assumes that the SynCom-inoculated microbiome samples are organized in sub-folders inside of the read input folder (-i | --read-folder). Each sub-folder should contain the single or paired-end reads (.fastq.gz). 
+
+```
+For example:
+
+  read_folder/
+            └── sample_1
+                ├── sample_1_R1.fastq.gz
+                └── sample_1_R2.fastq.gz
+            └── sample_2
+                ├── sample_2_R1.fastq.gz
+                └── sample_2_R2.fastq.gz
+            └── ...
+
+```
 
 ### Output
 
