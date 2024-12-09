@@ -27,11 +27,14 @@ ___
 ## Table of content:
 
 - [Introduction](#introduction)
+- [SyFi steps] (#syfi-steps)
 - [Usage](#usage)
 - [Potential situations](#potential-situations)
 - [Explanation of summary and progress text files](#explanation-of-summary-and-progress-text-files)
+- [SyFi runtime](#syfi-runtime)
 - [SyFi validation dataset](#syfi-validation-dataset)
 - [SyFi future implementations](#syfi-future-implementations)
+- [Troubleshooting](#troubleshooting)
 
 ### Introduction
 
@@ -52,6 +55,59 @@ The second module of SyFi (SyFi quant) requires the metagenomic reads from the S
 The pseudoalignment tool Salmon is used at default settings with the exception of the '--minScoreFraction', which is set at 0.95. This high value allows Salmon to pseudoalign the reads more accurately to highly similar sequences. This is evident when pseudoaligning reads to the fingerprints of two isolates in which both harbor five marker copies, from which one strain has one copy with biological variations that makes it different from the other four copies. Even though the strains are highly similar (sharing four identical marker sequences), the biological variations in the last marker sequence allow distinction between the isolates within a complex SynCom dataset.
 
 ![SyFi_Fig2-1](https://github.com/user-attachments/assets/5ff800c5-f5b1-46b6-a0d8-1095870e65e4)
+
+### SyFi steps
+
+*SyFi main*
+
+1. Mapping:
+    1. Run blastn using the reference fasta file as the query and the target as the subject
+    2. Extract the largest hit (or one out of many) from the blast output
+2. Alignment:
+    1. Index target fasta file (Step 1.2)
+    2. Map input paired-end reads against index
+    3. Subset high quality and proper paired reads of the alignment output
+3. Read recovery:
+    1. Extract paired-end reads from subset (Step 2.1)
+4. Contig re-build:
+    1. _De novo_ assembly of extracted paired-end reads
+    2. Minimum size select the _de novo_ contigs
+    3. Run Blast against the target to determine the sides (left and right) flanking regions
+    4. Define size of blast hit without flanking regions
+    5. Select the largest target recovered
+5. Contig re-alignment:
+    1. Align reads against largest recovered target
+6. Variant Calling:
+    1. Remove alignment duplicates (Step 5.1)
+    2. Haplotype caller
+    3. Join genotyping
+    4. Define if sample has 1 or more haplotypes (2 ways: unique or multiple)
+7. Phasing
+    1. Perform the phasing using the reference fasta, variants file and alignment file
+    2. Call the consensus haplotypes of allele 1 and 2 individually
+8. Abundance ratio:
+    1. Index the clean haplotypes (Step 7.X)
+    2. Quantify the abundance of each haplotypes using the input peared-end reads
+    3. Filter the abundance using the cutoff
+9. Target Copy Number:
+    1. Define length of assembly
+    2. Define number of bases in reads
+    3. Define length of largest recovered target
+    4. Define number of bases in reads within the recovered target
+    5. Compute target's copy number
+10. Integration:
+    1. Merge haplotype abundance and target copy number
+    2. Compute proportion and haplotype divisible (Modes: unique or multiple)
+    3. Recursively, remove the haplotype with the lowest ratio if proportion is below 0.5 and if there is more than one haplotype left
+    4. Adjust values when there is one haplotype and proportion is below 0.5
+11. Fingerprint:
+    1. Concatenate all haplotypes with their defined haplotype ratio using 10xN as delimiter
+12. Clean Files
+13. Create Summary
+
+*SyFi amplicon*
+
+*SyFi quant*
 
 ### Usage
 
@@ -115,80 +171,33 @@ The situations are recovered in the file *progress.txt* which it is used to defi
 
 ### Explanation of summary and progress text files
 
-**Integration 2**
+One of the steps in SyFi main is the copy number and haplotype number calculation, which are employed to build the fingerprint. The Rscript Integration.R is composed of a number of if statements that will lead to the most accurate fingerprint. Many intermediate steps in the SyFi main pipeline, including the intermediate steps taken in that Rscript, are saved in Summary.tsv. Here below is described how to interpret each column in the Summary.tsv file.
 
-When multiple haplotypes are present, the script integration.R works in the following way:
-- Using the abundance (kallisto) and the copy number (syfi), we compute the proportion per haplotype by dividing the copy number by the haplotype divisible (or the rounded abundance ratio).
-- If the proportion is below 0.5 we remove the haplotype with the smallest abundance ratio and recompute the proportion until it is equal or above 0.5 or there is only one haplotype left.
-- In the case the remaining haplotype is below 0.5, we round the proportion to 1 and we define the column "adjusted values" as "Yes". In the column the value "No" means that the values are the original results from the calculations and they have not been adjusted by us.
-- If the proportion is above 0.5, we keep the haplotypes and no further processing is performed.
+*Summary.tsv*
 
-**Modification of progress.txt**
+Isolate - Name of the SynCom isolate
+Input_folder - Name of the folder with all SynCom isolates' genomes and genomic read files
+Target_file - name of the target gene sequence file used as input for SyFi (the query)
+Target_length - length of the target sequence in Target_file
+Recovered_target_length - length of the target sequence that was retrieved from the SynCom isolate's genome and rebuild with SPAdes. 
+Length_deviation - the length deviation parameter in basepairs used in SyFi main (default 100). If the recovered_target_length is larger than 'Target_length + Length_deviation', or smaller than 'Target_length - Length_deviation', SyFi main will be stopped for that SynCom isolate since it was unable to find a proper target.
+Recovered_reads - number of reads that map the recovered target (two numbers since there are paired reads)
+Number_SNPs - number of variations found in the recovered target using the GATK software
+Cutoff - the maximum amount of target sequence copies that is allowed in the bacterial genome (default 25). If a SynCom isolate with only one haplotype exceeds this number, it is reset to 25. If a SynCom isolate with more than one haplotype exceeds this number, the least frequent occuring haplotype sequence is removed and the copy number is recalculated.
+Number_haplotypes - number of unique target sequences found in the SynCom isolate's genome (output of WhatsHap)
+Copy_number - the target sequence copy number, which is calculated by dividing the target gene coverage by the genome coverage. 
+Haplotype_ratio - the calculated occurrences of each haplotype in the genome. Kallisto is implemented to map the target gene reads to the haplotypes. The number of pseudoaligned reads to each haplotype is divided by the amount of pseudoaligned reads to the haplotype with the fewest amounts of reads. These values are rounded to provide the proportions to which the haplotypes occur in the genome. If the proportion is below 0.5, the haplotype is removed. Similarly, when the total count of all haplotypes (the rounded values) exceed the cutoff value, the haplotype with the fewest amount of reads is removed, and the haplotype proportions are recalculated. This process continues until the sum of the proportions do not exceed the cut-off value or only one haplotype is left.
+Modified_output - in the event that only one haplotype remains (after calculating the haplotype ratio) that has a copy number < 0.5, we set this copy number to 1. In that event 'Modified_output' will display 'Yes' instead of 'No', since the output was modified.
 
-For the moment, the file *progress.txt* is not hidden. That means that the user could modify the file, affecting the execution of the software. This is a double-side sword because users can take advantage of this file to force re-computation of samples but at the same time, if they are not good enough, there modification can cause issues. For example, if you have run a sample through SyFi and later on you remove the corresponding line in *progress.txt*, the sample will be re-computed but the previous files will not be erased. This might cause, issues like files with multiple lines and intermediate errors that will end in Skipped or Failed outcomes.
+*progress.txt*
 
+This text file contains the information for each SynCom isolate whether building a fingerprint was succesful or not (only for SyFi main). In the event it failed, the reason is provided why. 
 
-### SyFi steps:
+Be aware that when you later add new SynCom isolates to the input folder for SyFi main to process, SyFi main will use progress.txt to skip SynCom isolates that have already been processed. Removing the lines with specific SynCom isolates will lead to SyFi main recomputing the fingerprints again. 
 
-1. Mapping:
-    1. Run blastn using the reference fasta file as the query and the target as the subject
-    2. Extract the largest hit (or one out of many) from the blast output
-2. Alignment:
-    1. Index target fasta file (Step 1.2)
-    2. Map input paired-end reads against index
-    3. Subset high quality and proper paired reads of the alignment output
-3. Read recovery:
-    1. Extract paired-end reads from subset (Step 2.1)
-4. Contig re-build:
-    1. _De novo_ assembly of extracted paired-end reads
-    2. Minimum size select the _de novo_ contigs
-    3. Run Blast against the target to determine the sides (left and right) flanking regions
-    4. Define size of blast hit without flanking regions
-    5. Select the largest target recovered
-5. Contig re-alignment:
-    1. Align reads against largest recovered target
-6. Variant Calling:
-    1. Remove alignment duplicates (Step 5.1)
-    2. Haplotype caller
-    3. Join genotyping
-    4. Define if sample has 1 or more haplotypes (2 ways: unique or multiple)
-7. Phasing
-    1. Perform the phasing using the reference fasta, variants file and alignment file
-    2. Call the consensus haplotypes of allele 1 and 2 individually
-8. Abundance ratio:
-    1. Index the clean haplotypes (Step 7.X)
-    2. Quantify the abundance of each haplotypes using the input peared-end reads
-    3. Filter the abundance using the cutoff
-9. Target Copy Number:
-    1. Define length of assembly
-    2. Define number of bases in reads
-    3. Define length of largest recovered target
-    4. Define number of bases in reads within the recovered target
-    5. Compute target's copy number
-10. Integration:
-    1. Merge haplotype abundance and target copy number
-    2. Compute proportion and haplotype divisible (Modes: unique or multiple)
-    3. Recursively, remove the haplotype with the lowest ratio if proportion is below 0.5 and if there is more than one haplotype left
-    4. Adjust values when there is one haplotype and proportion is below 0.5
-11. Fingerprint:
-    1. Concatenate all haplotypes with their defined haplotype ratio using 10xN as delimiter
-12. Clean Files
-13. Create Summary
+### SyFi runtime
 
-
-
-
-### Troubleshooting
-
-**Important:** If when running SyFi all the strains shows "WARNING: No target reads were recovered for *{strain}*. Computation will be skipped.", samtools might not be working properly. Please, check if `samtools --version` returns the proper output. If not, check that you run the libcrypto correction mentioned above. Otherwise, try obtaining a working samtools software in your system.
-
-**Important:** If when running SyFi all the strains shows "WARNING: VCF file missing for *{strain}*. Computation will be skipped.", GATK might not be working properly. Please, check if `gatk --version` returns the proper output. If not, install gatk in your system or download the pre-compile version from this repository.
-
-**Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example, by using Blast. This is because the genome/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations. In other words, the consensus sequence "ACGTACGT" might be coming from a) "ACGTACGT" and b) "ACCTACGT" reads in the population. Given that, the "G/C" variant is masked when obtaining the consesus genome/MAG (in this case we have a G), the direct count of 16S haplotypes (in this case 1; a) from the reference could be different that the population 16S haplotypes (in this case 2; a and b).
-
-**Important**: Low quality genomes could be skipped because of: missing or incomplete targets.
-
-**Important**: The file "progress.txt" contains the information for the software to track the computation, the removal of the file will provoke the re-run of all samples even if they were finished (success).
+SyFi's runtime heavily depends on the size of the genomic read files provided and the threads utilized. A SynCom that is composed of 100 isolates will take ~1-2 hours to run when the genomic read files are of the size between 50-100 MB and 10 threads are used. Larger SynComs and larger genomic read files will cause SyFi's runtime to increase, though this might increase the runtime from a couple of hours to half a day or a whole day, and does not lead to months of increased computation.
 
 ### SyFi Validation dataset
 
@@ -209,3 +218,15 @@ SyFi is more accurate than current benchmark methodologies to identify and quant
 - Kallisto and Salmon are similar pseudoalignment tools with one crucial difference for SyFi. Salmon allows the changing of the minimum sequence identity score (--minScoreFraction), which we have found to be crucial for SyFi's accuracy when quantifying the SynCom isolates (Figure S5 in the manuscript). In the first implementation of SyFi, we still use kallisto to investigate haplotype abundances in the bacterial genomes. We aim to replace kallisto in this first module by Salmon to maintain consistency in used tools.
 
 - Using different target sequences as input for SyFi module 1 (SyFi main) may lead to different outputs. We are considering including a marker sequence database for the most commonly used marker sequences (e.g. *16S rRNA*, *rpoB*, *recA*, and *gyrB*) spanning the entire bacterial kingdom. This database will be used to taxonomically annotate the bacterial genome and use that information to use the marker sequence of the  phylogenetically closest relative as input for SyFi main. 
+
+### Troubleshooting
+
+**Important:** If when running SyFi all the strains shows "WARNING: No target reads were recovered for *{strain}*. Computation will be skipped.", samtools might not be working properly. Please, check if `samtools --version` returns the proper output. If not, check that you run the libcrypto correction mentioned above. Otherwise, try obtaining a working samtools software in your system.
+
+**Important:** If when running SyFi all the strains shows "WARNING: VCF file missing for *{strain}*. Computation will be skipped.", GATK might not be working properly. Please, check if `gatk --version` returns the proper output. If not, install gatk in your system or download the pre-compile version from this repository.
+
+**Important:** The target haplotypes recovered from the illumina reads might differ from the target/s found directly in the reference genome/MAGs, for example, by using Blast. This is because the genome/MAG might have mask the haplotype in a consensus sequence. Thus, from the illumina reads one might recover information from multiple populations. In other words, the consensus sequence "ACGTACGT" might be coming from a) "ACGTACGT" and b) "ACCTACGT" reads in the population. Given that, the "G/C" variant is masked when obtaining the consesus genome/MAG (in this case we have a G), the direct count of 16S haplotypes (in this case 1; a) from the reference could be different that the population 16S haplotypes (in this case 2; a and b).
+
+**Important**: Low quality genomes could be skipped because of: missing or incomplete targets.
+
+**Important**: The file "progress.txt" contains the information for the software to track the computation, the removal of the file will provoke the re-run of all samples even if they were finished (success).
