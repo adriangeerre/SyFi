@@ -144,7 +144,8 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
     OPTIONAL:
     # Haplotype deviation:
     -l  | --len_deviation    Total base-pairs for the haplotypes to deviate from the target length upstream and downstream (default: 100 bp).
-
+    -c | --cutoff    Maximum ratio deviation between haplotypes per sample. This parameter defined how much can an haplotype deviate from the minimum haplotype ratio (default: 25).
+    
     # Input extension:
     --fasta-extension        Reference file extension (default: fasta).
     --fastq-extension        Illumina reads file extension (default: fastq.gz).
