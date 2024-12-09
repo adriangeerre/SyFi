@@ -27,7 +27,7 @@ ___
 ## Table of content:
 
 - [Introduction](#introduction)
-- [SyFi steps] (#syfi-steps)
+- [SyFi steps](#syfi-steps)
 - [Usage](#usage)
 - [Potential situations](#potential-situations)
 - [Explanation of summary and progress text files](#explanation-of-summary-and-progress-text-files)
@@ -175,18 +175,30 @@ One of the steps in SyFi main is the copy number and haplotype number calculatio
 
 *Summary.tsv*
 
-Isolate - Name of the SynCom isolate
-Input_folder - Name of the folder with all SynCom isolates' genomes and genomic read files
-Target_file - name of the target gene sequence file used as input for SyFi (the query)
-Target_length - length of the target sequence in Target_file
+Isolate - Name of the SynCom isolate.
+
+Input_folder - Name of the folder with all SynCom isolates' genomes and genomic read files.
+
+Target_file - name of the target gene sequence file used as input for SyFi (the query).
+
+Target_length - length of the target sequence in Target_file.
+
 Recovered_target_length - length of the target sequence that was retrieved from the SynCom isolate's genome and rebuild with SPAdes. 
+
 Length_deviation - the length deviation parameter in basepairs used in SyFi main (default 100). If the recovered_target_length is larger than 'Target_length + Length_deviation', or smaller than 'Target_length - Length_deviation', SyFi main will be stopped for that SynCom isolate since it was unable to find a proper target.
-Recovered_reads - number of reads that map the recovered target (two numbers since there are paired reads)
-Number_SNPs - number of variations found in the recovered target using the GATK software
+
+Recovered_reads - number of reads that map the recovered target (two numbers since there are paired reads).
+
+Number_SNPs - number of variations found in the recovered target using the GATK software.
+
 Cutoff - the maximum amount of target sequence copies that is allowed in the bacterial genome (default 25). If a SynCom isolate with only one haplotype exceeds this number, it is reset to 25. If a SynCom isolate with more than one haplotype exceeds this number, the least frequent occuring haplotype sequence is removed and the copy number is recalculated.
-Number_haplotypes - number of unique target sequences found in the SynCom isolate's genome (output of WhatsHap)
+
+Number_haplotypes - number of unique target sequences found in the SynCom isolate's genome (output of WhatsHap).
+
 Copy_number - the target sequence copy number, which is calculated by dividing the target gene coverage by the genome coverage. 
+
 Haplotype_ratio - the calculated occurrences of each haplotype in the genome. Kallisto is implemented to map the target gene reads to the haplotypes. The number of pseudoaligned reads to each haplotype is divided by the amount of pseudoaligned reads to the haplotype with the fewest amounts of reads. These values are rounded to provide the proportions to which the haplotypes occur in the genome. If the proportion is below 0.5, the haplotype is removed. Similarly, when the total count of all haplotypes (the rounded values) exceed the cutoff value, the haplotype with the fewest amount of reads is removed, and the haplotype proportions are recalculated. This process continues until the sum of the proportions do not exceed the cut-off value or only one haplotype is left.
+
 Modified_output - in the event that only one haplotype remains (after calculating the haplotype ratio) that has a copy number < 0.5, we set this copy number to 1. In that event 'Modified_output' will display 'Yes' instead of 'No', since the output was modified.
 
 *progress.txt*
