@@ -6,7 +6,7 @@ The other files and folders are called into the scripts to generate these. Downl
 
 What the individual files indicate:
 
-## Main Folder
+## Main folder
 
 16S_table.txt - An overview of the number of 16S copies and unique haplotypes found in the 447 bacterial isolates found by SyFi. 
 
