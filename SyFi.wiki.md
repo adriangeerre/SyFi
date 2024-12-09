@@ -28,24 +28,24 @@ ___
 
 - [Introduction](#introduction)
 - [Usage](#usage)
-- [Potential situation](#potential-situations)
+- [Explanation of summary.txt and progress.txt](#explanation-of-summary.txt-and-progress.txt)
 - [SyFi validation dataset](#syfi-validation-dataset)
 - [SyFi future implementations](#syfi-future-implementations)
 
 ### Introduction
 
-**SyFi (SynCom Fingerprinting)** is a bioinformatics workflow designed to enhance the identification and quantification of SynCom isolates in complex datasets. To understand root microbiome assembly, dynamics, and functioning, the plant microbiome field has witnessed the emergence of increasingly complex SynCom datasets that mimick the natural root microbiome complexity. These increasingly complex SynComs often consist of microbial isolates with highly similar marker genes, making it difficult for existing bioinformatics methods to distinguish between them accurately. SyFi overcomes this limitation by creating a "fingerprint" of the sequenced marker gene for each SynCom isolate (Module 1) and using the generated fingerprints as a reference for pseudoalignment of SynCom data reads (Module 2), enabling better resolution of isolates with identical or highly similar marker genes.
+**SyFi (SynCom Fingerprinting)** is a bioinformatics workflow designed to enhance the identification and quantification of SynCom isolates in complex datasets. To understand root microbiome assembly, dynamics, and functioning, the plant microbiome field has witnessed the emergence of increasingly complex SynCom datasets that mimick the natural root microbiome complexity. These increasingly complex SynComs often consist of microbial isolates with highly similar marker genes, making it difficult for existing bioinformatics methods to distinguish between them accurately. SyFi overcomes this limitation by creating a "fingerprint" of the sequenced marker gene for each SynCom isolate (SyFi main) and using the generated fingerprints as a reference for pseudoalignment of SynCom data reads (SyFi quant), enabling better resolution of isolates with identical or highly similar marker genes.
 
-*Module 1* 
+*SyFi main* 
 The first module of SyFi (SyFi main) requires at least three files to generate fingerprints of a SynCom isolate: 1. the genome of the SynCom isolate, 2. the corresponding genomic reads that were used to assemble the genome, and 3. a target fasta sequence of the marker gene (e.g. the *16S rRNA* gene). SyFi aligns the target to the bacterial genome and extracts the sequence with the highest sequence identity score (BLAST v2.13.0). The genomic reads are mapped to the sequence using BWA with default parameters (v2.2.1), and filtered using Samtools (v1.16.1). The target sequence is then reassembled using SPAdes with default parameters (v3.15.5) to ascertain non-ambiguous bases in the marker sequence. The SPAdes-generated target sequence is subjected to length thresholds and trimmed accordingly (using Samtools v1.16.1). 
 
 The cleaned marker sequence is processed through a variant calling pathway (Picard algorithm (v2.27.5) in GATK software (v3.8)), which finds SNPs, insertions and deletions in the marker sequence. When variants are found in the sequence, Whatshap (v1.7) then investigates the co-occurrence of these variants in the marker sequence, which will lead to multiple haplotypes (Mode 1). When multiple haplotypes are find, either by GATK-Whatshap (Mode 1) or already directly by SPAdes (Mode 2), Kallisto (v0.48.0) is employed to pseudoalign the target reads to both haplotypes and estimate the abundance of each haplotype in the genome. Finally, the copy number of each haplotype is calculated by comparing the marker sequence coverage to the total genomic coverage. The haplotype sequences are then concatenated according to their copy number to generate the fingerprint. 
 
-SyFi fingerprints can best be generated on an entire gene and not a fragment (or amplicon) of a gene. Using *in silico* primers, and the module 'SyFi amplicon', we allow the user to extract the amplicon fingerprint from the original fingerprint generated with SyFi main. 
+SyFi fingerprints can best be generated on an entire gene and not a fragment (or amplicon) of a gene. Using *in silico* primers, and the second module 'SyFi amplicon', we allow the user to extract the amplicon fingerprint from the original fingerprint generated with SyFi main. 
 
 ![SyFi_Fig1](https://github.com/user-attachments/assets/505caf2c-0c23-41b4-a34e-022ff6b39952)
 
-*Module 2*
+*SyFi quant*
 The second module of SyFi (SyFi quant) requires the metagenomic reads from the SynCom dataset and the generated marker fingerprints. SyFi first concatenates all fingerprints into one large fasta file. Using the pseudoalignment tool Salmon (v1.4.0), the metagenomic reads are pseudoaligned to the fingerprints to quantify the SynCom isolates. Finally, the marker copy numbers that were calculated in the first module are used to normalize the Salmon counts. 
 
 The pseudoalignment tool Salmon is used at default settings with the exception of the '--minScoreFraction', which is set at 0.95. This high value allows Salmon to pseudoalign the reads more accurately to highly similar sequences. This is evident when pseudoaligning reads to the fingerprints of two isolates in which both harbor five marker copies, from which one strain has one copy with biological variations that makes it different from the other four copies. Even though the strains are highly similar (sharing four identical marker sequences), the biological variations in the last marker sequence allow distinction between the isolates within a complex SynCom dataset.
@@ -97,6 +97,10 @@ Reasons to change the length deviation parameter:
 
 When calculating the proportion of marker sequence haplotypes in the bacterial genome, a threshold is implemented to avoid unrealistic marker sequence copy numbers that may derive from biological contamination or technical errors. E.g. contaminating reads or PCR errors may lead to the construction of a haplotype that isn't not part of the bacterial genome; a biological or technical artifact. Due to the rarity of these errors among the marker sequence reads, the haplotype proportion may indicate how the actual marker sequence haplotype is a 100-fold more present than the haplotype deriving from these artifacts. A ratio deviation cutoff provides a treshold (e.g. the default is 25) to ensure SyFi doesn't provide a copy number of 100, but instead removes the rare (technical error-derived) haplotype and recalculates the proportion to a biological more meaningful amount.
 
+### --minScoreFraction (Salmon pseudoaligment sequence identity threshold)
+
+Salmon implements a minimum sequence identity threshold of 0.65 as default for pseudoalignment of reads to the index. Since the SyFi-generated fingerprints may vary on only a few nucleotides difference, we increased the default to 0.95. This increase led to greater accuracy in identifying and quantifying SynCom isolates (see manuscript Figure S5). Increasing this parameter even further in SyFi may lead to an enhanced distinction of SynCom isolates that have near-identical fingerprints, though the number of pseudoaligned reads may decrease (see manuscript Figure S6) and therewith the number of identified SynCom isolates. Decreasing the parameter may lead to more pseudoaligned reads, though the accuracy in identifying SynCom isolates may decrease (see manuscript Figure S5). 
+
 ### Potential situations
 
 When running SyFi you might encounter different situations for your strains:
@@ -108,13 +112,7 @@ When running SyFi you might encounter different situations for your strains:
 The situations are recovered in the file *progress.txt* which it is used to define the strains to run through the workflow. If the strain has a label attached to it, then the argument `-f/--force` must be used to re-run the workflow. If there is no label, the workflow will be run over the strain. This implementation avoids re-computation of results and provides continuity.
 
 
-### Issues found (for us):
-
-**Integration 1**
-
-I has an issue were the integration failed because the resulting integration file was empty. This happened when I have multiple haplotypes. The issue was a bad while loop in *Integration.R*.
-
-After that, I found out that the ratio could be low (<0.5) causing values to be odd. Therefore, when we encounter a ratio that it is below 1 we automatically upgrade it to 1 because if we are able to compute both the abundance and the copy number is because, at least, there is 1 target copy. However, to inform of this modification, we added the column *adjusted_values* (Yes|No) to determine if the ratio was below 1 (when Yes).
+### Explanation of summary.txt and progress.txt
 
 **Integration 2**
 
@@ -128,9 +126,6 @@ When multiple haplotypes are present, the script integration.R works in the foll
 
 For the moment, the file *progress.txt* is not hidden. That means that the user could modify the file, affecting the execution of the software. This is a double-side sword because users can take advantage of this file to force re-computation of samples but at the same time, if they are not good enough, there modification can cause issues. For example, if you have run a sample through SyFi and later on you remove the corresponding line in *progress.txt*, the sample will be re-computed but the previous files will not be erased. This might cause, issues like files with multiple lines and intermediate errors that will end in Skipped or Failed outcomes.
 
-**SPAdes does not produce a contigs fasta**
-
-I have seen in P1_A8 and P2_G4 that the software crashes (seqtk) because SPAdes does not produce a fasta file. This seems to be caused by a low number of recovered reads (288 and 44, repectively). I have add a check and a label in the progress file ("SPAdes did not assembly any target sequence").
 
 ### SyFi steps:
 
