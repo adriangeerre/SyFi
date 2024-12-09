@@ -29,7 +29,7 @@ ___
 - [Introduction](#introduction)
 - [Usage](#usage)
 - [Potential situations](#potential-situations)
-- [Explanation of summary.txt and progress.txt](#explanation-of-summary.txt-and-progress.txt)
+- [Explanation of summary.txt and progress.txt](#explanation-of-summary-txt-and-progress-txt)
 - [SyFi validation dataset](#syfi-validation-dataset)
 - [SyFi future implementations](#syfi-future-implementations)
 
