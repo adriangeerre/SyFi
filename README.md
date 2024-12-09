@@ -79,7 +79,7 @@ Usage: ./SyFi.sh <MODULE>
 Sequential modules:
   main:      perform fingerprint identification from microbiome data.
   amplicon:  retrieve amplicon fingerprints from gene fingerprints using in silico primers.
-  quant:     pseudoalign amplicon sequecing data to firgerprints.
+  quant:     pseudoalign amplicon sequecing data to fingerprints.
 
 Other:
   help:      display this help message.
