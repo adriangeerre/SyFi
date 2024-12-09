@@ -205,7 +205,7 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
     -k  | --keep_files    Keep temporary files [0: Minimum, 1: Salmon output, or 2: All] (default: 0).
     -v  | --verbose    Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
  
-     # Display:
+    # Display:
     -h  | --help                             Display help.
     --citation                               Display citation.
     --folder_structure                       Display required folder structure.
