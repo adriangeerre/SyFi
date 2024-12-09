@@ -132,7 +132,9 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
 
 ### Usage
 
-`./SyFi.sh -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>`
+*SyFi main*
+
+`./SyFi.sh main -i <INPUT_FOLDER> -s <SEARCH_TARGET> -t <THREADS>`
 
     REQUIRED:
     # Input
@@ -161,6 +163,53 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
     -h  | --help             Display help.
     -c  | --citation         Display citation.
     --folder_structure       Display required folder structure.
+
+*SyFi amplicon*
+
+`./SyFi.sh amplicon -i <INPUT_FOLDER> -f <FORWARD_PRIMER> -r <REVERSE_PRIMER> -n <MINIMUM_LENGTH> -x <MAXIMUM_LENGTH>`
+
+REQUIRED:
+    # Input
+    -i  | --input_folder     The 70-Fingerprint folder containing SyFi output executed on full length target.
+    -f  | --forward_primer    Forward primer for extracting amplicon of interest.
+    -r  | --reverse_primer    Reverse primer for extracting amplicon of interest.
+    -n  | --minimum_length    Minimum length of the amplicon of interest.
+    -x  | --maximum_length    Maximum length of the amplicon of interest.
+
+    # Output options
+    -v  | --verbose    Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
+    
+    # Display:
+    -h  | --help    Display help.
+    --citation    Display citation.
+    
+
+
+*SyFi quant*
+
+`./SyFi.sh quant -i <READ_FOLDER> -s <FINGERPRINT_FOLDER> -t <THREADS>`
+    
+    REQUIRED:
+    # Input
+    -i  | --read_folder    Folder containing the sample reads. The software assumes that the folder contains sub-folders for each sample containing the fastq.gz files of either single end reads or paired end read.
+    -f  | --fingerprint_folder    SyFi main output folder that contains the fingerprints or SyFi amplicon output folder that contains the amplicon fingerprints. If the user wants to exclude bacterial members, a personalized folder can be created with the SynCom members of interest instead.
+
+    OPTIONAL:
+    # Read type
+    -r  | --read_type    Paired or single end reads [paired or single] (default: paired).
+  
+    # Pseudoalignment percentage identity score:
+    -m  | --minscorefraction    Percentage identity score that Salmon uses for pseudoaligning metagenomic reads to the SyFi-generated fingerprints (default: 0.95).
+ 
+    # Output options:
+    -k  | --keep_files    Keep temporary files [0: Minimum, 1: Salmon output, or 2: All] (default: 0).
+    -v  | --verbose    Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
+ 
+     # Display:
+    -h  | --help                             Display help.
+    --citation                               Display citation.
+    --folder_structure                       Display required folder structure.
+
 
 ### Length deviation
 
