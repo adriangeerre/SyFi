@@ -168,7 +168,7 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
 
 `./SyFi.sh amplicon -i <INPUT_FOLDER> -f <FORWARD_PRIMER> -r <REVERSE_PRIMER> -n <MINIMUM_LENGTH> -x <MAXIMUM_LENGTH>`
 
-REQUIRED:
+    REQUIRED:
     # Input
     -i  | --input_folder     The 70-Fingerprint folder containing SyFi output executed on full length target.
     -f  | --forward_primer    Forward primer for extracting amplicon of interest.
