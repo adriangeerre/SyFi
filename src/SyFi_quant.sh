@@ -417,7 +417,7 @@ done
 files=$(ls 80-Pseudoalignment/*/output.txt)
 
 # Run paste.awk on these files
-awk -f paste.awk ${files} > 90-Output/raw_output_table.txt
+awk -f src/paste.awk ${files} > 90-Output/raw_output_table.txt
 
 #Remove header from Salmon output 
 sed -i '1d' 90-Output/raw_output_table.txt
