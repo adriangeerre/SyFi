@@ -98,7 +98,7 @@ function citation()
 }
 
 # Define location of script to identify src folder
-actual_script=$(which $0)
+actual_script=$(readlink -f "$0")
 actual_path=$(dirname ${actual_script})
 
 # Module execution functions
