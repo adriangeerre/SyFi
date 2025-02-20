@@ -695,7 +695,7 @@ for subf in $(ls ${INPUT_FOLDER}); do
 	bwa-mem2 mem 11-Sequences/${subf}/${subf}.fasta ${INPUT_FOLDER}/${subf}/${subf}_R1.${FQEXT} ${INPUT_FOLDER}/${subf}/${subf}_R2.${FQEXT} -t ${THREADS} 2>> 01-Logs/main/log_${subf}.txt > 20-Alignment/${subf}/${subf}.sam
 
 	# Sam to BAM
-	# samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/main/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
+	samtools view -b 20-Alignment/${subf}/${subf}.sam -@ ${THREADS} 2>> 01-Logs/main/log_${subf}.txt > 20-Alignment/${subf}/${subf}.bam
 	# Sort BAM (Coordinate) for Variant Call
 	# samtools sort -o 20-Alignment/${subf}/${subf}.sort.bam -O bam 20-Alignment/${subf}/${subf}.bam -@ ${THREADS} 2>> 01-Logs/main/log_${subf}.txt
 	# Obtain BAM of mapped reads (properly pair)
