@@ -5,7 +5,7 @@
 # Created By    : Gijs Selten, Florian Lamouche and Adrián Gómez Repollés
 # Email         : adrian.gomez@mbg.au.dk / g.selten@uu.nl
 # Created Date  : 07/11/2022
-# version       : '1.2'
+# version       : '1.0'
 # ---------------------------------------------------------------------------
 # Pipeline (bash) to perform fingerprint identification from microbiome data.
 # ---------------------------------------------------------------------------
