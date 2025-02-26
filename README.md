@@ -66,9 +66,9 @@ Download the latest package release. Please, modify the code with your own folde
 
 ```
 cd {SOFTWARE_FOLDER_PATH}
-wget https://github.com/adriangeerre/SyFi/releases/download/beta/SyFi.<latest>.zip
-unzip SyFi.<latest>.zip
-echo 'export PATH="{SOFTWARE_FOLDER_PATH}/SyFi_{version}/:$PATH"' >> $HOME/.bashrc
+wget https://github.com/adriangeerre/SyFi/releases/download/v1.0/SyFi_v1.0.zip
+unzip SyFi_v1.0.zip
+echo 'export PATH="{SOFTWARE_FOLDER_PATH}/SyFi_v1.0/:$PATH"' >> $HOME/.bashrc
 ```
 
 ### Usage
