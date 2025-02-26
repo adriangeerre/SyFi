@@ -714,4 +714,3 @@ dependencies:
   - zlib=1.2.13=h4ab18f5_6
   - zstandard=0.19.0=py38ha98ab4e_2
   - zstd=1.5.2=hfc55251_7
-prefix: /home/au614901/Software/miniconda3/envs/SyFi-q2
