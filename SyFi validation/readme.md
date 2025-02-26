@@ -1,6 +1,6 @@
 # SyFi validation
 
-The SyFi validation folder contains all the files to recreate the figures in the manuscript. The folder 'Rscripts' contains the R code to generate and save the main figures 3 and 4, the supplemental figures S1-S7, supplemental table S5, and the figure in Appendix 3. SyFi_full.R contains all scripts together, while the other scripts are Rscripts of the individual figures or tables.
+The SyFi validation folder contains all the files to recreate the figures in the manuscript. The folder 'Rscripts' contains the R code to generate and save the main figures 2, 3 and 4, the supplemental figures S1-S7, supplemental table S5, and the figure in Appendix 3. SyFi_full.R contains all scripts together, while the other scripts are Rscripts of the individual figures or tables.
 
 The other files and folders are called into the scripts to generate these. Downloading the entire 'SyFi validation' folder and setting the location of this folder into the working_directory line in the Rscript will allow the user to easily generate all figures. 
 
@@ -31,6 +31,8 @@ comparison_datasets_presence_absence - Folder with the same datasets of 'compari
 complete_genomes - Folder with files that show information regarding a set of 3621 closed genomes downloaded from NCBI. Information is shown regarding the GC content of the 16S rRNA gene and the full genome (16S_GC_genomes_full.txt), the 16S copy number (16S_copy_number.tsv), the number of 16S haplotypes (16S_haplotypes.tsv), and the taxonomy (taxonomy.tsv). 
 
 genome_assembly - Folder with files on the genome assembly quality of the 447 SynCom isolates. The filenames indicate what information is contained, e.g. the GC content in the SyFi-generated 16S rRNA fingerprints (GC_16S_fin.txt), in the genomes (GC_content.txt), the genome size (genome_size.txt), the amount of basepairs in the genomic read files (Genome_total_base_pairs.txt), the L50 (length of the contig that, together with all larger contigs) covers 50% of the genome) (L50.txt), the checkm genome quality report (containing information like completeness, heterogeneity, and contamination), the length of the SyFi-generated 16S rRNA fingerprints (length_16S_fin.txt), and a list of the SynCom isolates (list.txt)
+
+human_set - folder with files that show information on the 16S rRNA copy number and haplotype number of the human gut microbiome bacterial isolate set. Also included is the taxonomy of these strains and a list of dereplicated genomes (genomes more dissimilar > 99.99%) 
 
 minscorefraction - Folder with the V3-V4 and V5-V7 datasets in which the pseudoalignment of reads to the SyFi-generated fingerprints was done at 65, 75, 85, and 95% minscorefraction when using Salmon in SyFi module 2. The AtSC_meta_norm.tsv file is the shotgun-metagenomics dataset of the same samples for comparison and evaluating SyFi's accuracy.
 
