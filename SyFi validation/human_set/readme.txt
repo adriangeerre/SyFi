@@ -1,0 +1,1 @@
+For running SyFi main on the human microbiome dataset of Forster et al. (2019), we downloaded the genomic reads, assembled the genomes with SPAdes (version v3.15.5), removed any genomes with completeness levels <70% or contamination levels > 10% according to CheckM (v1.1.9), and created a dereplicated set of genomes (<99.99% similarity) with dRep (v3.2.2).
