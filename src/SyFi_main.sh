@@ -129,10 +129,10 @@ KEEPF=0
 VERBOSE=2
 
 # Define software path
-SYFI_BASE=$(dirname $(whereis ${0} | cut -d " " -f 2))
-GENOME_PHASE=$(echo ${SYFI_BASE}/src/genome_phase.sh)
-FILTER_HAPLOTYPES=$(echo ${SYFI_BASE}/src/filterHaplotypes.R)
-INTEGRATION=$(echo ${SYFI_BASE}/src/Integration.R)
+SYFI_BASE=$(dirname ${0})
+GENOME_PHASE=$(echo ${SYFI_BASE}/genome_phase.sh)
+FILTER_HAPLOTYPES=$(echo ${SYFI_BASE}/filterHaplotypes.R)
+INTEGRATION=$(echo ${SYFI_BASE}/Integration.R)
 
 ### Parameters
 
@@ -435,8 +435,8 @@ function copyNumber() {
 	l16S=$(cut -f 15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | awk 'BEGIN{a=0} {if ($1>0+a) a=$1} END{print a}')
 
 	# Define start and end of target for base count (Choose first one if l16S returns multiple (equal size))
-	start=$(cut -f 7,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | head -n 1 | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}')
-	end=$(cut -f 8,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | head -n 1 | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}')
+	start=$(cut -f 7,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}' | head -n 1)
+	end=$(cut -f 8,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}' | head -n 1)
 	
 	# Number of bases in selected reads
 	b16S=$(bedtools genomecov -d -ibam 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v start=${start} '($2 > start)' | awk -v end=${end} '($2 < end)' | awk '{sum+=$3;} END{print sum;}')
@@ -1126,6 +1126,9 @@ function CreateSummary() {
 				rhaplo=$(cut -f 14 60-Integration/${iso}/integration.tsv | grep -v "per_haplotype" | tr "\n" "/" | sed 's/\/$//')
 				mod=$(cut -f 15 60-Integration/${iso}/integration.tsv | tail -n 1)
 
+				# Correct number of haplotypes
+				if [ ${nhaplo} -eq 0 ]; then nhaplo=1; fi
+
 				# Row
 				if [[ -f 60-Integration/${iso}/integration.tsv ]]; then
 					printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t%.4f\t${rhaplo}\t${mod}\n" $cnum >> Summary.tsv
@@ -1149,6 +1152,9 @@ function CreateSummary() {
 				cnum=$(cut -f 9 60-Integration/${iso}/integration.tsv | tail -n 1)
 				rhaplo=$(cut -f 14 60-Integration/${iso}/integration.tsv | grep -v "per_haplotype" | tr "\n" "/" | sed 's/\/$//')
 				mod=$(cut -f 15 60-Integration/${iso}/integration.tsv | tail -n 1)
+
+				# Correct number of haplotypes
+				if [ ${nhaplo} -eq 0 ]; then nhaplo=1; fi
 
 				# Strain not present
 				if [[ -f 60-Integration/${iso}/integration.tsv ]]; then
