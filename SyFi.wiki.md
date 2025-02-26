@@ -27,9 +27,16 @@ The first module of SyFi (SyFi main) requires at least three files to generate f
 
 The cleaned marker sequence is processed through a variant calling pathway (Picard algorithm (v2.27.5) in GATK software (v3.8)), which finds SNPs, insertions and deletions in the marker sequence. When variants are found in the sequence, Whatshap (v1.7) then investigates the co-occurrence of these variants in the marker sequence, which will lead to multiple haplotypes (Mode 1). When multiple haplotypes are find, either by GATK-Whatshap (Mode 1) or already directly by SPAdes (Mode 2), Kallisto (v0.48.0) is employed to pseudoalign the target reads to both haplotypes and estimate the abundance of each haplotype in the genome. Finally, the copy number of each haplotype is calculated by comparing the marker sequence coverage to the total genomic coverage. The haplotype sequences are then concatenated according to their copy number to generate the fingerprint. 
 
-SyFi fingerprints can best be generated on an entire gene and not a fragment (or amplicon) of a gene. Using *in silico* primers, and the second module 'SyFi amplicon', we allow the user to extract the amplicon fingerprint from the original fingerprint generated with SyFi main. 
 
 ![SyFi_Fig1](https://github.com/user-attachments/assets/505caf2c-0c23-41b4-a34e-022ff6b39952)
+
+
+*SyFi amplicon* 
+
+SyFi fingerprints can best be generated on an entire gene and not a fragment (or amplicon) of a gene. Using *in silico* primers, and the second module 'SyFi amplicon', we allow the user to extract the amplicon fingerprint from the original fingerprint generated with SyFi main. This will create a fingerprint with the following format:
+
+<img width="377" alt="image" src="https://github.com/user-attachments/assets/63a180f5-8130-47e2-9426-3ea645b35b0c" />
+
 
 *SyFi quant*
 
@@ -37,7 +44,8 @@ The second module of SyFi (SyFi quant) requires the metagenomic reads from the S
 
 The pseudoalignment tool Salmon is used at default settings with the exception of the '--minScoreFraction', which is set at 0.95. This high value allows Salmon to pseudoalign the reads more accurately to highly similar sequences. This is evident when pseudoaligning reads to the fingerprints of two isolates in which both harbor five marker copies, from which one strain has one copy with biological variations that makes it different from the other four copies. Even though the strains are highly similar (sharing four identical marker sequences), the biological variations in the last marker sequence allow distinction between the isolates within a complex SynCom dataset.
 
-![SyFi_Fig2-1](https://github.com/user-attachments/assets/5ff800c5-f5b1-46b6-a0d8-1095870e65e4)
+<img width="653" alt="image" src="https://github.com/user-attachments/assets/bc7eaf20-7f32-4e16-973c-51c906925612" />
+
 
 ### SyFi steps
 
