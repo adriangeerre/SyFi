@@ -4,9 +4,9 @@
 
 SyFi is divided into three sequential modules:
 
-- Main: This pipeline uses Illumina reads, contigs and a sequence target (e.g., 16S) to obtain the target haplotypes abundances ratio.
-- Amplicon: This pipeline retrieves amplicon fingerprints from the gene fingerprints from the first module using in silico primers.
-- Quant: This pipeline takes the results from the first module and quantify the fingerprint abundance from amplicon sequencing data
+- **Main:** This pipeline uses Illumina reads, contigs and a sequence target (e.g., 16S) to obtain the target haplotypes abundances ratio.
+- **Amplicon:** This pipeline retrieves amplicon fingerprints from the gene fingerprints from the first module using in silico primers.
+- **Quant:** This pipeline takes the results from the first module and quantify the fingerprint abundance from amplicon sequencing data
 
 ## Dependencies
 
