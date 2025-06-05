@@ -1,4 +1,4 @@
-##Overview of SyFi validation folders
+# Overview of SyFi validation folders
 
 16S_and_fingerprint_fastas - Folder with the fasta sequences of the studied datasets in the manuscript. These include the directly blasted 16S sequences as well as the SyFi-generated 16S fingerprints of the human gut and plant root (AtSC) bacterial isolates. For the plant root dataset there are also the direct sequences and the fingerprints of the V3-V4 and V5-V7 amplicon regions.
 
