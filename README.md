@@ -8,6 +8,8 @@ SyFi is divided into three sequential modules:
 - **Amplicon:** This pipeline retrieves amplicon fingerprints from the gene fingerprints from the first module using in silico primers.
 - **Quant:** This pipeline takes the results from the first module and quantify the fingerprint abundance from amplicon sequencing data
 
+SyFi amplicon and quant can be run without genomic reads as input. Please check SyFi_without_genomic_reads.md if this is the case.
+
 ## Dependencies
 
 The pipeline depends on:
