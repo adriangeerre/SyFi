@@ -7,6 +7,7 @@
 - [Usage](#usage)
 - [Potential situations](#potential-situations)
 - [Explanation of summary and progress text files](#explanation-of-summary-and-progress-text-files)
+- [Confidence scores and quality measures](#confidence-scores-and-quality-measures)
 - [SyFi runtime](#syfi-runtime)
 - [SyFi validation dataset](#syfi-validation-dataset)
 - [SyFi future implementations](#syfi-future-implementations)
@@ -251,6 +252,26 @@ Modified_output - in the event that only one haplotype remains (after calculatin
 This text file contains the information for each SynCom isolate whether building a fingerprint was succesful or not (only for SyFi main). In the event it failed, the reason is provided why. 
 
 Be aware that when you later add new SynCom isolates to the input folder for SyFi main to process, SyFi main will use progress.txt to skip SynCom isolates that have already been processed. Removing the lines with specific SynCom isolates will lead to SyFi main recomputing the fingerprints again. 
+
+### Confidence scores and quality measures
+
+To ascertain the quality of the SyFi main-generated haplotypes and fingerprints, SyFi creates a quality summary of each called variant in the marker sequence and outputs these to the individual SynCom isolate folders in 40-Phasing. This *_variants_stats.tsv file shows the following information.
+
+- Position of the called variant in the reference sequence
+- Reference - Nucleotide in the reference sequence in that position
+- Alternative - Alternative nucleotide in that same position (variant)
+- Fisher Strand Bias (FS) - Statistic test to evaluate if one DNA strand is favored over the other - high values indicate strand-specific errors (> 60 for SNPs and > 200 for InDels)
+- Strand Odds Ratio (SOR) - Statistic test to evaluate if one DNA strand is favored over the other - Values > 3.0 may indicate errors
+- Mapping Quality (MQ) - Average quality of mapped reads - 60 is perfect while lower values reduce confidence
+- MQRankSum - Mapping quality comparison between reference and alternative variants - Near 0 is good, otherwise it may indicate a potential bias (< -12.5 often considered bad)
+- BaseQRankSum - Base quality comparison between reference and alternative reads. Large negative or positive values suggest sequencing bias towards reference (negative) or alternative variant (positive). Values > 2 or < -2 indicate sequencing bias to one of the sequences.
+- ReadposRankSum - Comparison of location of variants (start, middle, end) of sequence between reference and alternative sequences. Values > 8 or < -8 are considered untrustworthy variants.
+
+The quality of pseudoaligned microbiome reads to the SyFi-generated fingerprints (through SyFi quant) is assed by calculating the average alignment score (P(aln)). For each SynCom member and sample, the alignment scores of each individual read is normalized by the best alignment score for that SynCom member and sample and scaled to a value between 0 and 1. The closer the alignment score is to 1, the higher the alignment score, while a score close to 0 indicates a poor alignment score. The scoreExp value is set at 1.0, which is the default value in Salmon. The alignment scores are supplied in the 90-Output folder with the same dimensions as the count tables.
+
+<img width="259" alt="image" src="https://github.com/user-attachments/assets/ff15029a-ad64-4dc2-b64a-942ef73c9887" />
+
+Additionally, SyFi quant also reports the number of pseudoaligned reads per sample with relation to the total amount of microbiome reads (90-Output/unmapped_reads.txt). Running SyFi quant with the '-k 1' parameter will keep intermediate sam files of the pseudoaligned reads and will allow the user to extract and investigate unmapped/unpseudoaligned reads (80-Pseudoalignment/${sample}/aux_info/unmapped_names.txt).
 
 ### SyFi runtime
 
