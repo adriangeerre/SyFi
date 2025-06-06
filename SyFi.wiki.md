@@ -268,7 +268,9 @@ Additionally, SyFi quant also reports the number of pseudoaligned reads per samp
 
 ### SyFi runtime
 
-SyFi's runtime heavily depends on the size of the genomic read files provided and the threads utilized. A SynCom that is composed of 100 isolates will take ~1-2 hours to run when the genomic read files are of the size between 50-100 MB and 10 threads are used. Larger SynComs and larger genomic read files will cause SyFi's runtime to increase, though this might increase the runtime from a couple of hours to half a day or a whole day, and does not lead to months of increased computation.
+The three SyFi modules have varying runtime, with SyFi main being the most time and memory-consuming. SyFi main’s memory usage is capped at 8 GB with the option to enhance this, while the runtime is heavily dependent on the size of the genomic read files that are required for the input. Runtime and memory usage of SyFi amplicon or SyFi quant primarily depend on Qiime2 (version 2022.8) and Salmon (version 1.4.0) respectively .
+
+<img width="781" alt="image" src="https://github.com/user-attachments/assets/689c78f0-d4a2-4b4c-bc2c-dcab8f3c5132" />
 
 ### SyFi validation dataset
 
