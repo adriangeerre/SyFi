@@ -5,7 +5,7 @@
 # Created By    : Gijs Selten, Florian Lamouche and Adrián Gómez Repollés
 # Email         : adrian.gomez@mbg.au.dk / g.selten@uu.nl
 # Created Date  : 07/11/2022
-# version       : '1.0'
+# version       : '1.2'
 # ---------------------------------------------------------------------------
 # Pipeline (bash) to perform fingerprint identification from microbiome data.
 # ---------------------------------------------------------------------------
@@ -129,10 +129,10 @@ KEEPF=0
 VERBOSE=2
 
 # Define software path
-SYFI_BASE=$(dirname ${0})
-GENOME_PHASE=$(echo ${SYFI_BASE}/genome_phase.sh)
-FILTER_HAPLOTYPES=$(echo ${SYFI_BASE}/filterHaplotypes.R)
-INTEGRATION=$(echo ${SYFI_BASE}/Integration.R)
+SYFI_BASE=$(dirname $(whereis ${0} | cut -d " " -f 2))
+GENOME_PHASE=$(echo ${SYFI_BASE}/src/genome_phase.sh)
+FILTER_HAPLOTYPES=$(echo ${SYFI_BASE}/src/filterHaplotypes.R)
+INTEGRATION=$(echo ${SYFI_BASE}/src/Integration.R)
 
 ### Parameters
 
@@ -435,8 +435,8 @@ function copyNumber() {
 	l16S=$(cut -f 15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | awk 'BEGIN{a=0} {if ($1>0+a) a=$1} END{print a}')
 
 	# Define start and end of target for base count (Choose first one if l16S returns multiple (equal size))
-	start=$(cut -f 7,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}' | head -n 1)
-	end=$(cut -f 8,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}' | head -n 1)
+	start=$(cut -f 7,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | head -n 1 | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}')
+	end=$(cut -f 8,15 20-Alignment/${subf}/flanking/${subf}.target.sizeclean.tsv | head -n 1 | awk -v l16S=${l16S} '{if ($2 == l16S) {print $1}}')
 	
 	# Number of bases in selected reads
 	b16S=$(bedtools genomecov -d -ibam 20-Alignment/${subf}/${subf}.rebuild.sort.bam | awk -v start=${start} '($2 > start)' | awk -v end=${end} '($2 < end)' | awk '{sum+=$3;} END{print sum;}')
@@ -484,6 +484,25 @@ function fingerPrint() {
 
 		# Check: Variants (Yes/No)
 		if [ $variants == "Yes" ]; then
+
+			# Print statistics of variant calling
+			printf "#Position - Position of the called variant in the reference sequence\n#Reference - Nucleotide in the reference sequence in that position\n#Alternative - Alternative nucleotide in that same position (variant)\n#FS - Fisher Strand Bias - Statistic test to evaluate if one DNA strand is favored over the other - high values indicate strand-specific errors (> 60 for SNPs and > 200 for InDels)\n#SOR - Strand Odds Ratio - Statistic test to evaluate if one DNA strand is favored over the other - Values > 3.0 may indicate errors\n#MQ - Mapping Quality - Average quality of mapped reads - 60 is perfect while lower values reduce confidence\n#MQRankSum - Mapping quality comparison between reference and alternative variants - Near 0 is good, otherwise it may indicate a potential bias (< -12.5 often considered bad)\n#BaseQRankSum - Base quality comparison between reference and alternative reads. Large negative or positive values suggest sequencing bias towards reference (negative) or alternative variant (positive). Values > 2 or < -2 indicate sequencing bias to one of the sequences.\n#ReadposRankSum - Comparison of location of variants (start, middle, end) of sequence between reference and alternative sequences. Values > 8 or < -8 are considered untrustworthy variants.\n" >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+			printf "\nPosition\tReference\tAlternative\tFS\tSOR\tMQ\tMQRankSum\tBaseQRankSum\tReadposRankSum\n" >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+
+			number_of_variants=$(zgrep "BaseQRankSum" 40-Phasing/${subf}/${subf}_phased.vcf.gz | grep -v "#" | cut -f2 | wc -l)
+
+			for i in $(seq 1 $number_of_variants) ; do
+    			    zgrep "BaseQRankSum" 40-Phasing/${subf}/${subf}_phased.vcf.gz | grep -v "#" | cut -f2 | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\t/g' >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+    			    zgrep "BaseQRankSum" 40-Phasing/${subf}/${subf}_phased.vcf.gz | grep -v "#" | cut -f4 | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\t/g' >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+    		    	    zgrep "BaseQRankSum" 40-Phasing/${subf}/${subf}_phased.vcf.gz | grep -v "#" | cut -f5 | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\t/g' >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+    		    	    zgrep "FS" 40-Phasing/${subf}/${subf}_phased.vcf.gz | sed 's/;/\n/g' | grep -v "#" | grep "FS" | cut -f2 -d "=" | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\t/g' >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+	    		    zgrep "SOR" 40-Phasing/${subf}/${subf}_phased.vcf.gz | sed 's/;/\n/g' | grep -v "#" | sed 's/\t/\n/g' | grep "SOR" | cut -f2 -d "=" | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\t/g' >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+  	  		    zgrep "MQ" 40-Phasing/${subf}/${subf}_phased.vcf.gz | sed 's/;/\n/g' | grep -v "#" | grep "MQ" | grep -v "MQRankSum" | cut -f2 -d "=" | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\t/g' >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+    			    zgrep "MQRankSum" 40-Phasing/${subf}/${subf}_phased.vcf.gz | sed 's/;/\n/g' | grep -v "#" | grep "MQRankSum" | cut -f2 -d "=" | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\t/g' >>  40-Phasing/${subf}/${subf}_variants_stats.tsv
+	    		    zgrep "BaseQRankSum" 40-Phasing/${subf}/${subf}_phased.vcf.gz | sed 's/;/\n/g' | grep -v "#" | grep "BaseQRankSum" | cut -f2 -d "=" | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\t/g' >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+    			    zgrep "ReadPosRankSum" 40-Phasing/${subf}/${subf}_phased.vcf.gz | sed 's/;/\n/g' | grep -v "#" | grep "ReadPosRankSum" | cut -f2 -d "=" | head -n $i | tail -n1 | tr -d '\n' | sed 's/$/\n/g' >> 40-Phasing/${subf}/${subf}_variants_stats.tsv
+			done
+
 			# Separate fasta into multiples fasta
 			seqkit split -i 50-Haplotypes/${subf}/clean_${subf}_haplotypes.fasta -O 70-Fingerprints/${subf} &>> 01-Logs/main/log_${subf}.txt
 
@@ -539,7 +558,7 @@ function CleanFiles() {
 	KEEPF=$3
 
 	# Array
-	keep=("./01-Logs/main/log_${SAMPLE}.txt" "./10-Blast/${SAMPLE}.tsv" "./11-Sequences/${SAMPLE}/${SAMPLE}.fasta" "./20-Alignment/${SAMPLE}/${SAMPLE}.fasta" "./20-Alignment/${SAMPLE}/${SAMPLE}_R1.fastq.gz" "./20-Alignment/${SAMPLE}/${SAMPLE}_R2.fastq.gz" "./30-VariantCalling/${SAMPLE}/variants/${SAMPLE}.vcf.gz" "./40-Phasing/${SAMPLE}/${SAMPLE}_phased.vcf.gz" "./50-Haplotypes/${SAMPLE}/clean_${SAMPLE}_haplotypes.fasta" "./60-Integration/${SAMPLE}/abundance.tsv" "./60-Integration/${SAMPLE}/copy_number.tsv" "./60-Integration/${SAMPLE}/integration.tsv" "./70-Fingerprints/${SAMPLE}/${SAMPLE}_all_haplotypes.fasta")
+	keep=("./01-Logs/main/log_${SAMPLE}.txt" "./10-Blast/${SAMPLE}.tsv" "./11-Sequences/${SAMPLE}/${SAMPLE}.fasta" "./20-Alignment/${SAMPLE}/${SAMPLE}.fasta" "./20-Alignment/${SAMPLE}/${SAMPLE}_R1.fastq.gz" "./20-Alignment/${SAMPLE}/${SAMPLE}_R2.fastq.gz" "./30-VariantCalling/${SAMPLE}/variants/${SAMPLE}.vcf.gz" "./40-Phasing/${SAMPLE}/${SAMPLE}_phased.vcf.gz" "./40-Phasing/${SAMPLE}/${SAMPLE}_variants_stats.tsv" "./50-Haplotypes/${SAMPLE}/clean_${SAMPLE}_haplotypes.fasta" "./60-Integration/${SAMPLE}/abundance.tsv" "./60-Integration/${SAMPLE}/copy_number.tsv" "./60-Integration/${SAMPLE}/integration.tsv" "./70-Fingerprints/${SAMPLE}/${SAMPLE}_all_haplotypes.fasta")
 
 	# Remove files
 	if [ ${KEEPF} -eq 0 ]; then
@@ -1126,9 +1145,6 @@ function CreateSummary() {
 				rhaplo=$(cut -f 14 60-Integration/${iso}/integration.tsv | grep -v "per_haplotype" | tr "\n" "/" | sed 's/\/$//')
 				mod=$(cut -f 15 60-Integration/${iso}/integration.tsv | tail -n 1)
 
-				# Correct number of haplotypes
-				if [ ${nhaplo} -eq 0 ]; then nhaplo=1; fi
-
 				# Row
 				if [[ -f 60-Integration/${iso}/integration.tsv ]]; then
 					printf "${iso}\t${INPUT_FOLDER}\t${SEARCH_TARGET}\t${tl}\t${rtl}\t${BPDEV}\t${recr1}/${recr2}\t${nsnps}\t${CUTOFF}\t${nhaplo}\t%.4f\t${rhaplo}\t${mod}\n" $cnum >> Summary.tsv
@@ -1152,9 +1168,6 @@ function CreateSummary() {
 				cnum=$(cut -f 9 60-Integration/${iso}/integration.tsv | tail -n 1)
 				rhaplo=$(cut -f 14 60-Integration/${iso}/integration.tsv | grep -v "per_haplotype" | tr "\n" "/" | sed 's/\/$//')
 				mod=$(cut -f 15 60-Integration/${iso}/integration.tsv | tail -n 1)
-
-				# Correct number of haplotypes
-				if [ ${nhaplo} -eq 0 ]; then nhaplo=1; fi
 
 				# Strain not present
 				if [[ -f 60-Integration/${iso}/integration.tsv ]]; then

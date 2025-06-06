@@ -288,7 +288,7 @@ function amplicon() {
 	 printf "\n\n### Amplicon ###\n\n" >> 01-Logs/amplicon/log_${DATE}.txt
 
 	 # Set input sequence for amplicon retrieval
-	 GENPATH=70-Fingerprints/${subf}
+	 GENPATH=${INPUT_FOLDER}/${subf}
 	 QZAPATH=71-Amplicon/${subf}
 	 OUTPATH=71-Amplicon/${subf}
 
@@ -326,7 +326,7 @@ function amplicon() {
 		printf "\n\n### Amplicon ###\n\n" >> 01-Logs/amplicon/log_${DATE}.txt
 
 		# Set input sequence for amplicon retrieval
-	 GENPATH=70-Fingerprints/${subf}
+	 GENPATH=${INPUT_FOLDER}/${subf}
 	 QZAPATH=71-Amplicon/${subf}
 	 OUTPATH=71-Amplicon/${subf}
 
