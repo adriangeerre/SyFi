@@ -269,7 +269,7 @@ To ascertain the quality of the SyFi main-generated haplotypes and fingerprints,
 
 The quality of pseudoaligned microbiome reads to the SyFi-generated fingerprints (through SyFi quant) is assed by calculating the average alignment score (P(aln)). For each SynCom member and sample, the alignment scores of each individual read is normalized by the best alignment score for that SynCom member and sample and scaled to a value between 0 and 1. The closer the alignment score is to 1, the higher the alignment score, while a score close to 0 indicates a poor alignment score. The scoreExp value is set at 1.0, which is the default value in Salmon. The alignment scores are supplied in the 90-Output folder with the same dimensions as the count tables.
 
-<img width="259" alt="image" src="https://github.com/user-attachments/assets/ff15029a-ad64-4dc2-b64a-942ef73c9887" />
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/ff15029a-ad64-4dc2-b64a-942ef73c9887" />
 
 Additionally, SyFi quant also reports the number of pseudoaligned reads per sample with relation to the total amount of microbiome reads (90-Output/unmapped_reads.txt). Running SyFi quant with the '-k 1' parameter will keep intermediate sam files of the pseudoaligned reads and will allow the user to extract and investigate unmapped/unpseudoaligned reads (80-Pseudoalignment/${sample}/aux_info/unmapped_names.txt).
 
