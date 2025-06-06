@@ -30,7 +30,7 @@ nano 16S_sequence.fasta
 With the SyFi environment activated, we require the 60-Integration folder, the 70-Fingerprints folder, and the Summary.tsv file that SyFi main generates
 
 ```
-#Make a 70-Fingerprints folder for putting in the references and the SyFi main Integration folder for extracting amplicons
+#Make the 70-Fingerprints folder for putting in the references and the SyFi main 60-Integration folder for extracting amplicons
 mkdir 70-Fingerprints
 mkdir 60-Integration
 
