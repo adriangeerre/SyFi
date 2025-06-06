@@ -6,6 +6,7 @@
 - [SyFi steps](#syfi-steps)
 - [Usage](#usage)
 - [Potential situations](#potential-situations)
+- [SyFi test dataset](#syfi-test-dataset)
 - [Explanation of summary and progress text files](#explanation-of-summary-and-progress-text-files)
 - [Confidence scores and quality measures](#confidence-scores-and-quality-measures)
 - [SyFi runtime](#syfi-runtime)
@@ -180,7 +181,7 @@ The pseudoalignment tool Salmon is used at default settings with the exception o
     -v  | --verbose    Verbose mode [0: Quiet 1: Samples, or 2: All] (default: 2).
  
 
-### Length deviation
+*Length deviation*
 
 Before variants are called in the SPAdes-assembled target sequence of the SynCom isolate, the sequence is subjected to a length deviation threshold. This parameter can be tweaked, so the user can customize this according to the length variability that the marker sequence may have across the bacterial kingdom. 
 
@@ -189,13 +190,17 @@ Reasons to change the length deviation parameter:
 -Decreasing the length deviation ascertains more clean and comparable marker gene fingerprints. This way we only include complete target genes and target genes with unclear boundaries. 
 -Increasing the length deviation is necessary when the length of the marker sequence can vary substantially between bacterial taxa. Another reason to increase the length deviation is when working with a big proportion of incomplete genome assemblies. SyFi might not be able to find many clean and complete target sequences from incomplete genome assemblies when the length deviation is too strict. A more lenient length deviation may overcome this, though may also increase the risk of incorporating marker sequences deriving from contaminating contigs. 
 
-### Ratio deviation (cutoff)
+*Ratio deviation (cutoff)*
 
 When calculating the proportion of marker sequence haplotypes in the bacterial genome, a threshold is implemented to avoid unrealistic marker sequence copy numbers that may derive from biological contamination or technical errors. E.g. contaminating reads or PCR errors may lead to the construction of a haplotype that isn't not part of the bacterial genome; a biological or technical artifact. Due to the rarity of these errors among the marker sequence reads, the haplotype proportion may indicate how the actual marker sequence haplotype is a 100-fold more present than the haplotype deriving from these artifacts. A ratio deviation cutoff provides a treshold (e.g. the default is 25) to ensure SyFi doesn't provide a copy number of 100, but instead removes the rare (technical error-derived) haplotype and recalculates the proportion to a biological more meaningful amount.
 
-### --minScoreFraction (Salmon pseudoaligment sequence identity threshold)
+*--minScoreFraction (Salmon pseudoaligment sequence identity threshold)*
 
 Salmon implements a minimum sequence identity threshold of 0.65 as default for pseudoalignment of reads to the index. Since the SyFi-generated fingerprints may vary on only a few nucleotides difference, we increased the default to 0.95. This increase led to greater accuracy in identifying and quantifying SynCom isolates (see manuscript Figure S5). Increasing this parameter even further in SyFi may lead to an enhanced distinction of SynCom isolates that have near-identical fingerprints, though the number of pseudoaligned reads may decrease (see manuscript Figure S6) and therewith the number of identified SynCom isolates. Decreasing the parameter may lead to more pseudoaligned reads, though the accuracy in identifying SynCom isolates may decrease (see manuscript Figure S5). 
+
+### SyFi test dataset
+
+To assess whether SyFi is installed and running correctly, a small dataset can be downloaded using this Zenodo DOI: 10.5281/zenodo.15606920 . This dataset contains a readme file with the commands that are to be run, a 16S rRNA sequence fasta file to use as the subject in the SyFi main alignment step, a folder with the bacterial genomic data of eight SynCom isolates according to the SyFi main required folder structure, and a folder with microbiome amplicon data of four samples according to the SyFi quant required folder structure. Mind that this small test dataset is a subset from the validation dataset of the manuscript, which means that the amount of pseudoaligned reads in the SyFi quant will appear low (only 8 SynCom members of the 447 are included for generating the SyFi fingerprints). Included in the Zenodo link is the archived SyFi code from 06-06-2025.
 
 ### Potential situations
 
