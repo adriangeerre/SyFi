@@ -28,9 +28,7 @@ The first module of SyFi (SyFi main) requires at least three files to generate f
 
 The cleaned marker sequence is processed through a variant calling pathway (Picard algorithm (v2.27.5) in GATK software (v3.8)), which finds SNPs, insertions and deletions in the marker sequence. When variants are found in the sequence, Whatshap (v1.7) then investigates the co-occurrence of these variants in the marker sequence, which will lead to multiple haplotypes (Mode 1). When multiple haplotypes are find, either by GATK-Whatshap (Mode 1) or already directly by SPAdes (Mode 2), Kallisto (v0.48.0) is employed to pseudoalign the target reads to both haplotypes and estimate the abundance of each haplotype in the genome. Finally, the copy number of each haplotype is calculated by comparing the marker sequence coverage to the total genomic coverage. The haplotype sequences are then concatenated according to their copy number to generate the fingerprint. 
 
-
-<img width="307" alt="image" src="https://github.com/user-attachments/assets/b2a91c3e-0e32-4dac-8788-7c9b87c8ee86" />
-
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/70de4cab-8828-40be-96f8-14feaa45a897" />
 
 *SyFi amplicon* 
 
