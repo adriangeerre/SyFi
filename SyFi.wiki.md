@@ -36,8 +36,7 @@ The cleaned marker sequence is processed through a variant calling pathway (Pica
 
 SyFi fingerprints can best be generated on an entire gene and not a fragment (or amplicon) of a gene. Using *in silico* primers, and the second module 'SyFi amplicon', we allow the user to extract the amplicon fingerprint from the original fingerprint generated with SyFi main. This will create a fingerprint with the following format:
 
-<img width="377" alt="image" src="https://github.com/user-attachments/assets/63a180f5-8130-47e2-9426-3ea645b35b0c" />
-
+<img width="391" alt="image" src="https://github.com/user-attachments/assets/99642105-f604-4d85-a243-b4c1e31d06c1" />
 
 *SyFi quant*
 
