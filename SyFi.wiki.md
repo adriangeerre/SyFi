@@ -44,8 +44,7 @@ The second module of SyFi (SyFi quant) requires the metagenomic reads from the S
 
 The pseudoalignment tool Salmon is used at default settings with the exception of the '--minScoreFraction', which is set at 0.95. This high value allows Salmon to pseudoalign the reads more accurately to highly similar sequences. This is evident when pseudoaligning reads to the fingerprints of two isolates in which both harbor five marker copies, from which one strain has one copy with biological variations that makes it different from the other four copies. Even though the strains are highly similar (sharing four identical marker sequences), the biological variations in the last marker sequence allow distinction between the isolates within a complex SynCom dataset.
 
-<img width="653" alt="image" src="https://github.com/user-attachments/assets/bc7eaf20-7f32-4e16-973c-51c906925612" />
-
+<img width="674" alt="image" src="https://github.com/user-attachments/assets/f3a3fb8e-777f-4876-bf6a-e0eae3f971fc" />
 
 ### SyFi steps
 
