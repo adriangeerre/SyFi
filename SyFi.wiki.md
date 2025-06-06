@@ -17,10 +17,7 @@
 
 **SyFi (SynCom Fingerprinting)** is a bioinformatics workflow designed to enhance the identification and quantification of SynCom isolates in complex datasets. To understand root microbiome assembly, dynamics, and functioning, the plant microbiome field has witnessed the emergence of increasingly complex SynCom datasets that mimick the natural root microbiome complexity. These increasingly complex SynComs often consist of microbial isolates with highly similar marker genes, making it difficult for existing bioinformatics methods to distinguish between them accurately. SyFi overcomes this limitation by creating a "fingerprint" of the sequenced marker gene for each SynCom isolate (SyFi main), extracting the amplicon regions of this fingerprint and constructing an amplicon fingerprint (SyFi amplicon), and using the generated fingerprints as a reference for pseudoalignment of SynCom data reads (SyFi quant), enabling better resolution of isolates with identical or highly similar marker genes.
 
-<img width="710" alt="image" src="https://github.com/user-attachments/assets/561eb9f1-db57-478f-94c1-36a67a76dcc0" />
-
-
-
+<img width="950" alt="image" src="https://github.com/user-attachments/assets/9f095122-1c99-4bd6-9d8d-43f33831cf18" />
 
 *SyFi main* 
 
