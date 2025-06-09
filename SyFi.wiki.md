@@ -253,7 +253,7 @@ Be aware that when you later add new SynCom isolates to the input folder for SyF
 
 ### Confidence scores and quality measures
 
-To ascertain the quality of the SyFi main-generated haplotypes and fingerprints, SyFi creates a quality summary of each called variant in the marker sequence and outputs these to the individual SynCom isolate folders in 40-Phasing. This *_variants_stats.tsv file shows the following information.
+The variant-calling algorithm embedded in SyFi main has the default gatk3 statistical thresholds implemented for calling variants, with Phred-based quality scores > 30 always called, and > 10 subjected to various thresholds including the ones listed here below. SyFi main creates a quality summary of each called variant in the marker sequence and outputs these to the individual SynCom isolate folders in 40-Phasing. This *_variants_stats.tsv file shows the following information.
 
 - Position of the called variant in the reference sequence
 - Reference - Nucleotide in the reference sequence in that position
